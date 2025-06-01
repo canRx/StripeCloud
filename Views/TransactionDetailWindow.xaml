@@ -1,0 +1,177 @@
+﻿<Window x:Class="StripeCloud.Views.TransactionDetailWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Transaktionsdetails" Height="700" Width="900"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+
+    <Window.Resources>
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="Margin" Value="0,20,0,10"/>
+        </Style>
+
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#555"/>
+            <Setter Property="Margin" Value="0,5,10,5"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+
+        <Style x:Key="ValueStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="Margin" Value="0,5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+
+        <Style x:Key="CopyButtonStyle" TargetType="Button">
+            <Setter Property="Content" Value="📋"/>
+            <Setter Property="Width" Value="25"/>
+            <Setter Property="Height" Value="25"/>
+            <Setter Property="Margin" Value="5,0,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#DDD"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTip" Value="In Zwischenablage kopieren"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+            <TextBlock Text="Transaktionsdetails" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
+            <Border Margin="20,0,0,0" Padding="10,5" CornerRadius="4" VerticalAlignment="Center">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Comparison.Status}" Value="Match">
+                                <Setter Property="Background" Value="#E8F5E8"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Comparison.Status}" Value="OnlyStripe">
+                                <Setter Property="Background" Value="#FFF3E0"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Comparison.Status}" Value="OnlyChargecloud">
+                                <Setter Property="Background" Value="#FFF3E0"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Comparison.Status}" Value="AmountMismatch">
+                                <Setter Property="Background" Value="#FFEBEE"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding Status}" FontWeight="SemiBold">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource ValueStyle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Comparison.Status}" Value="Match">
+                                    <Setter Property="Foreground" Value="#2E7D32"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Comparison.Status}" Value="OnlyStripe">
+                                    <Setter Property="Foreground" Value="#F57C00"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Comparison.Status}" Value="OnlyChargecloud">
+                                    <Setter Property="Foreground" Value="#F57C00"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Comparison.Status}" Value="AmountMismatch">
+                                    <Setter Property="Foreground" Value="#C62828"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Border>
+        </StackPanel>
+
+        <!-- Main Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Allgemeine Informationen -->
+                <TextBlock Text="Allgemeine Informationen" Style="{StaticResource SectionHeaderStyle}"/>
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Kunde:" Style="{StaticResource LabelStyle}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CustomerEmail}" Style="{StaticResource ValueStyle}"/>
+                    <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource CopyButtonStyle}" Command="{Binding CopyEmailCommand}"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Datum:" Style="{StaticResource LabelStyle}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding TransactionDate}" Style="{StaticResource ValueStyle}"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Betrag:" Style="{StaticResource LabelStyle}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Amount}" Style="{StaticResource ValueStyle}" FontWeight="Bold"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Anzeigename:" Style="{StaticResource LabelStyle}"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding DisplayName}" Style="{StaticResource ValueStyle}"/>
+                </Grid>
+
+                <!-- Stripe und Chargecloud nebeneinander -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Stripe Details -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Stripe Transaktion" Style="{StaticResource SectionHeaderStyle}"/>
+                        <Border BorderBrush="#2196F3" BorderThickness="2" CornerRadius="4" Padding="15">
+                            <StackPanel>
+                                <TextBlock Text="{Binding StripeDetails}" 
+                                         FontFamily="Consolas" 
+                                         FontSize="11" 
+                                         Foreground="#333"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Chargecloud Details -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Chargecloud Transaktion" Style="{StaticResource SectionHeaderStyle}"/>
+                        <Border BorderBrush="#FF9800" BorderThickness="2" CornerRadius="4" Padding="15">
+                            <StackPanel>
+                                <TextBlock Text="{Binding ChargecloudDetails}" 
+                                         FontFamily="Consolas" 
+                                         FontSize="11" 
+                                         Foreground="#333"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="-20,20,-20,-20">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0">
+                <Button Content="Schließen" 
+                        Width="100" 
+                        Height="35" 
+                        Background="#757575" 
+                        Foreground="White" 
+                        BorderThickness="0" 
+                        Click="CloseButton_Click"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
