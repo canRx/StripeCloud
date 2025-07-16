@@ -99,11 +99,12 @@ namespace StripeCloud.Models
         {
             get
             {
-                if (HasStripeTransaction && !string.IsNullOrEmpty(StripeTransaction.CustomerDescription))
+                // KORRIGIERT: Null-safe Zugriff
+                if (HasStripeTransaction && !string.IsNullOrEmpty(StripeTransaction?.CustomerDescription))
                     return StripeTransaction.CustomerDescription;
 
-                if (HasChargecloudTransaction && !string.IsNullOrEmpty(ChargecloudTransaction.Contract))
-                    return $"{ChargecloudTransaction.Contract}";
+                if (HasChargecloudTransaction && !string.IsNullOrEmpty(ChargecloudTransaction?.Contract))
+                    return ChargecloudTransaction.Contract;
 
                 return CustomerEmail;
             }
@@ -114,9 +115,10 @@ namespace StripeCloud.Models
         {
             get
             {
-                if (!HasStripeTransaction) return "Keine Stripe-Transaktion gefunden";
+                if (!HasStripeTransaction || StripeTransaction == null)
+                    return "Keine Stripe-Transaktion gefunden";
 
-                var stripe = StripeTransaction!;
+                var stripe = StripeTransaction;
                 return $"ID: {stripe.Id}\n" +
                        $"Betrag: {stripe.FormattedAmount}\n" +
                        $"Status: {stripe.Status}\n" +
@@ -129,9 +131,10 @@ namespace StripeCloud.Models
         {
             get
             {
-                if (!HasChargecloudTransaction) return "Keine Chargecloud-Transaktion gefunden";
+                if (!HasChargecloudTransaction || ChargecloudTransaction == null)
+                    return "Keine Chargecloud-Transaktion gefunden";
 
-                var cc = ChargecloudTransaction!;
+                var cc = ChargecloudTransaction;
                 return $"Rechnung: {cc.InvoiceNumber}\n" +
                        $"Betrag: {cc.FormattedAmount}\n" +
                        $"Status: {cc.PaymentStatus}\n" +

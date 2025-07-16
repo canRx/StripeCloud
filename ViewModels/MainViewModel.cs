@@ -1,15 +1,16 @@
-﻿using Microsoft.Win32;
-using StripeCloud.Helpers;
-using StripeCloud.Models;
-using StripeCloud.Services;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
+using Microsoft.Win32;
+using StripeCloud.Helpers;
+using StripeCloud.Models;
+using StripeCloud.Services;
 
 namespace StripeCloud.ViewModels
 {
@@ -34,6 +35,12 @@ namespace StripeCloud.ViewModels
         private ObservableCollection<string> _availableCustomers = new();
         private ObservableCollection<int> _availableYears = new();
         private ObservableCollection<int> _availableMonths = new();
+        private ObservableCollection<StatusFilterOption> _availableStatusFilters = new();
+
+        //  Sortierung
+        private ICollectionView? _filteredComparisonsView;
+        private string _currentSortColumn = string.Empty;
+        private ListSortDirection _currentSortDirection = ListSortDirection.Ascending;
 
         public MainViewModel()
         {
@@ -44,6 +51,7 @@ namespace StripeCloud.ViewModels
 
             InitializeCommands();
             InitializeData();
+            InitializeCollectionView();
 
             // Filter-Changes überwachen
             _filterOptions.PropertyChanged += OnFilterChanged;
@@ -81,6 +89,13 @@ namespace StripeCloud.ViewModels
             set => SetProperty(ref _filteredComparisons, value);
         }
 
+        // CollectionView für Sortierung
+        public ICollectionView? FilteredComparisonsView
+        {
+            get => _filteredComparisonsView;
+            set => SetProperty(ref _filteredComparisonsView, value);
+        }
+
         public ObservableCollection<string> AvailableCustomers
         {
             get => _availableCustomers;
@@ -99,18 +114,42 @@ namespace StripeCloud.ViewModels
             set => SetProperty(ref _availableMonths, value);
         }
 
-        // Statistik-Properties
+        //  Status-Filter Optionen
+        public ObservableCollection<StatusFilterOption> AvailableStatusFilters
+        {
+            get => _availableStatusFilters;
+            set => SetProperty(ref _availableStatusFilters, value);
+        }
+
+        // Statistik-Properties (vereinfacht)
         public int TotalTransactions => _allComparisons.Count;
         public int PerfectMatches => _allComparisons.Count(c => c.Status == ComparisonStatus.Match);
         public int ProblemsCount => _allComparisons.Count(c => c.Status != ComparisonStatus.Match);
-        public double MatchRate => TotalTransactions > 0 ? (double)PerfectMatches / TotalTransactions * 100 : 0;
 
-        public string StatisticsSummary =>
-            $"Gesamt: {TotalTransactions} | Übereinstimmungen: {PerfectMatches} ({MatchRate:F1}%) | Probleme: {ProblemsCount}";
+        // Vereinfachte Status-Anzeige nur mit Anzahl
+        public string DisplayStatusInfo =>
+            $"Angezeigt: {FilteredComparisons.Count} von {_allComparisons.Count}";
 
         public bool HasData => _allComparisons.Count > 0;
         public bool HasStripeData => _stripeTransactions.Count > 0;
         public bool HasChargecloudData => _chargecloudTransactions.Count > 0;
+
+        // Status-Karten Properties
+        public int StripeTransactionCount => _stripeTransactions.Count;
+        public int ChargecloudTransactionCount => _chargecloudTransactions.Count;
+
+        // Sortier-Info
+        public string CurrentSortInfo
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_currentSortColumn))
+                    return "Sortierung: Standard";
+
+                var direction = _currentSortDirection == ListSortDirection.Ascending ? "↑" : "↓";
+                return $"Sortierung: {GetColumnDisplayName(_currentSortColumn)} {direction}";
+            }
+        }
 
         #endregion
 
@@ -124,6 +163,15 @@ namespace StripeCloud.ViewModels
         public ICommand ShowTransactionDetailsCommand { get; private set; } = null!;
         public ICommand OpenDetailWindowCommand { get; private set; } = null!;
 
+        //  Support Command
+        public ICommand OpenSupportEmailCommand { get; private set; } = null!;
+
+        //  Filter-Commands
+        public ICommand ShowOnlyMatchesCommand { get; private set; } = null!;
+        public ICommand ShowOnlyProblemsCommand { get; private set; } = null!;
+        public ICommand ShowOnlyAmountMismatchCommand { get; private set; } = null!;
+        public ICommand ShowAllTransactionsCommand { get; private set; } = null!;
+
         private void InitializeCommands()
         {
             LoadStripeFileCommand = new RelayCommand(async () => await LoadStripeFileAsync(), () => !IsLoading);
@@ -133,6 +181,15 @@ namespace StripeCloud.ViewModels
             ExportToExcelCommand = new RelayCommand(async () => await ExportToExcelAsync(), () => HasData && !IsLoading);
             ShowTransactionDetailsCommand = new RelayCommand<TransactionComparison>(ShowTransactionDetails);
             OpenDetailWindowCommand = new RelayCommand(OpenDetailWindow, () => SelectedTransaction != null);
+
+            //  Support E-Mail Command
+            OpenSupportEmailCommand = new RelayCommand(OpenSupportEmail);
+
+            //  Schnellfilter-Commands
+            ShowOnlyMatchesCommand = new RelayCommand(ShowOnlyMatches, () => HasData);
+            ShowOnlyProblemsCommand = new RelayCommand(ShowOnlyProblems, () => HasData);
+            ShowOnlyAmountMismatchCommand = new RelayCommand(ShowOnlyAmountMismatch, () => HasData);
+            ShowAllTransactionsCommand = new RelayCommand(ShowAllTransactions, () => HasData);
         }
 
         #endregion
@@ -153,6 +210,70 @@ namespace StripeCloud.ViewModels
             {
                 AvailableYears.Add(i);
             }
+
+            // Status-Filter-Optionen hinzufügen
+            foreach (var option in StatusFilterOption.GetAllOptions())
+            {
+                AvailableStatusFilters.Add(option);
+            }
+        }
+
+        private void InitializeCollectionView()
+        {
+            FilteredComparisonsView = CollectionViewSource.GetDefaultView(FilteredComparisons);
+            FilteredComparisonsView.SortDescriptions.Clear();
+        }
+
+        //  Support E-Mail öffnen
+        private void OpenSupportEmail()
+        {
+            try
+            {
+                var subject = "StripeCloud Support - Anfrage";
+                var body = "Hallo Support-Team,\n\nIch habe eine Frage/ein Problem mit StripeCloud:\n\n[Bitte beschreiben Sie hier Ihr Anliegen]\n\nVielen Dank für Ihre Hilfe!\n\nMit freundlichen Grüßen";
+
+                var mailtoUri = $"mailto:caner.engin@smartwerk.org?subject={Uri.EscapeDataString(subject)}&body={Uri.EscapeDataString(body)}";
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = mailtoUri,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"E-Mail-Client konnte nicht geöffnet werden.\nBitte wenden Sie sich direkt an: caner.engin@smartwerk.org\n\nFehler: {ex.Message}",
+                    "Support", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        // Sortier-Event Handler
+        public void HandleDataGridSorting(string? columnName, ListSortDirection direction)
+        {
+            if (string.IsNullOrEmpty(columnName) || FilteredComparisonsView == null)
+                return;
+
+            _currentSortColumn = columnName;
+            _currentSortDirection = direction;
+
+            FilteredComparisonsView.SortDescriptions.Clear();
+            FilteredComparisonsView.SortDescriptions.Add(new SortDescription(columnName, direction));
+
+            OnPropertyChanged(nameof(CurrentSortInfo));
+        }
+
+        private string GetColumnDisplayName(string columnName)
+        {
+            return columnName switch
+            {
+                "CustomerEmail" => "Kunde",
+                "TransactionDate" => "Datum",
+                "Amount" => "Betrag",
+                "Status" => "Status",
+                "HasStripeTransaction" => "Stripe",
+                "HasChargecloudTransaction" => "Chargecloud",
+                _ => columnName
+            };
         }
 
         private async Task LoadStripeFileAsync()
@@ -206,6 +327,7 @@ namespace StripeCloud.ViewModels
             {
                 IsLoading = false;
                 UpdateCommandStates();
+                NotifyStatisticsChanged();
             }
         }
 
@@ -260,6 +382,7 @@ namespace StripeCloud.ViewModels
             {
                 IsLoading = false;
                 UpdateCommandStates();
+                NotifyStatisticsChanged();
             }
         }
 
@@ -281,7 +404,7 @@ namespace StripeCloud.ViewModels
                     UpdateAvailableFilterOptions();
                     ApplyFilters();
 
-                    StatusMessage = _lastComparisonResult.GetSummary();
+                    StatusMessage = $"Vergleich abgeschlossen: {TotalTransactions} Transaktionen, {PerfectMatches} Übereinstimmungen, {ProblemsCount} Probleme";
                 }
                 else
                 {
@@ -298,8 +421,7 @@ namespace StripeCloud.ViewModels
             {
                 IsLoading = false;
                 UpdateCommandStates();
-                OnPropertyChanged(nameof(StatisticsSummary));
-                OnPropertyChanged(nameof(HasData));
+                NotifyStatisticsChanged();
             }
         }
 
@@ -347,14 +469,37 @@ namespace StripeCloud.ViewModels
                 FilteredComparisons.Add(comparison);
             }
 
-            StatusMessage = FilterOptions.HasAnyFilter
-                ? $"Filter angewendet: {FilteredComparisons.Count} von {_allComparisons.Count} Transaktionen"
-                : StatisticsSummary;
+            // CollectionView refresh
+            FilteredComparisonsView?.Refresh();
+
+            // GEÄNDERT: Einfachere Status-Updates
+            OnPropertyChanged(nameof(DisplayStatusInfo));
         }
 
         private void ClearAllFilters()
         {
             FilterOptions.ClearAllFilters();
+        }
+
+        // Schnellfilter-Methoden
+        private void ShowOnlyMatches()
+        {
+            FilterOptions.SetOnlyMatches();
+        }
+
+        private void ShowOnlyProblems()
+        {
+            FilterOptions.SetOnlyProblems();
+        }
+
+        private void ShowOnlyAmountMismatch()
+        {
+            FilterOptions.SetOnlyAmountMismatch();
+        }
+
+        private void ShowAllTransactions()
+        {
+            FilterOptions.ShowAll();
         }
 
         private async Task ExportToExcelAsync()
@@ -433,6 +578,19 @@ namespace StripeCloud.ViewModels
         private void UpdateCommandStates()
         {
             CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void NotifyStatisticsChanged()
+        {
+            OnPropertyChanged(nameof(HasData));
+            OnPropertyChanged(nameof(HasStripeData));
+            OnPropertyChanged(nameof(HasChargecloudData));
+            OnPropertyChanged(nameof(StripeTransactionCount));
+            OnPropertyChanged(nameof(ChargecloudTransactionCount));
+            OnPropertyChanged(nameof(TotalTransactions));
+            OnPropertyChanged(nameof(PerfectMatches));
+            OnPropertyChanged(nameof(ProblemsCount));
+            OnPropertyChanged(nameof(DisplayStatusInfo));
         }
 
         #endregion

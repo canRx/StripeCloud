@@ -1,4 +1,7 @@
-﻿using System.Windows.Input;
+﻿using System;
+using System.Text;
+using System.Windows;
+using System.Windows.Input;
 using StripeCloud.Helpers;
 using StripeCloud.Models;
 
@@ -83,15 +86,37 @@ namespace StripeCloud.ViewModels
 
         #region Commands
 
-        public ICommand CopyStripeIdCommand { get; private set; } = null!;
-        public ICommand CopyChargecloudInvoiceCommand { get; private set; } = null!;
+        // Basis-Commands
         public ICommand CopyEmailCommand { get; private set; } = null!;
+
+        // Stripe Copy Commands
+        public ICommand CopyStripeIdCommand { get; private set; } = null!;
+        public ICommand CopyStripeDescriptionCommand { get; private set; } = null!;
+
+        // Chargecloud Copy Commands
+        public ICommand CopyChargecloudInvoiceCommand { get; private set; } = null!;
+        public ICommand CopyChargecloudContractCommand { get; private set; } = null!;
+
+        // Erweiterte Commands
+        public ICommand CopyAllDataCommand { get; private set; } = null!;
+        public ICommand CreateEmailCommand { get; private set; } = null!;
 
         private void InitializeCommands()
         {
-            CopyStripeIdCommand = new RelayCommand(() => CopyToClipboard(StripeId), () => HasStripeTransaction);
-            CopyChargecloudInvoiceCommand = new RelayCommand(() => CopyToClipboard(ChargecloudInvoiceNumber), () => HasChargecloudTransaction);
+            // Basis-Commands
             CopyEmailCommand = new RelayCommand(() => CopyToClipboard(CustomerEmail));
+
+            // Stripe Copy Commands
+            CopyStripeIdCommand = new RelayCommand(() => CopyToClipboard(StripeId), () => HasStripeTransaction);
+            CopyStripeDescriptionCommand = new RelayCommand(() => CopyToClipboard(StripeDescription), () => HasStripeTransaction);
+
+            // Chargecloud Copy Commands
+            CopyChargecloudInvoiceCommand = new RelayCommand(() => CopyToClipboard(ChargecloudInvoiceNumber), () => HasChargecloudTransaction);
+            CopyChargecloudContractCommand = new RelayCommand(() => CopyToClipboard(ChargecloudContract), () => HasChargecloudTransaction);
+
+            // Erweiterte Commands
+            CopyAllDataCommand = new RelayCommand(CopyAllData);
+            CreateEmailCommand = new RelayCommand(CreateEmail);
         }
 
         #endregion
@@ -127,12 +152,134 @@ namespace StripeCloud.ViewModels
             {
                 if (!string.IsNullOrWhiteSpace(text) && text != "N/A")
                 {
-                    System.Windows.Clipboard.SetText(text);
+                    Clipboard.SetText(text);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Clipboard-Fehler ignorieren
+                MessageBox.Show($"Fehler beim Kopieren: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CopyAllData()
+        {
+            try
+            {
+                var sb = new StringBuilder();
+
+                // Header
+                sb.AppendLine("=== TRANSAKTIONSDETAILS ===");
+                sb.AppendLine($"Kunde: {CustomerEmail}");
+                sb.AppendLine($"Datum: {TransactionDate}");
+                sb.AppendLine($"Status: {Status}");
+                sb.AppendLine();
+
+                // Stripe-Daten
+                sb.AppendLine("=== STRIPE ===");
+                if (HasStripeTransaction)
+                {
+                    sb.AppendLine($"ID: {StripeId}");
+                    sb.AppendLine($"Betrag: {StripeAmount}");
+                    sb.AppendLine($"Status: {StripeStatus}");
+                    sb.AppendLine($"Erstellt: {StripeDate}");
+                    sb.AppendLine($"Beschreibung: {StripeDescription}");
+                    sb.AppendLine($"Gebühr: {StripeFee}");
+                    sb.AppendLine($"Nettobetrag: {StripeNetAmount}");
+                    sb.AppendLine($"Rückerstattet: {StripeRefunded}");
+                }
+                else
+                {
+                    sb.AppendLine("Keine Stripe-Transaktion gefunden");
+                }
+                sb.AppendLine();
+
+                // Chargecloud-Daten
+                sb.AppendLine("=== CHARGECLOUD ===");
+                if (HasChargecloudTransaction)
+                {
+                    sb.AppendLine($"Rechnungsnummer: {ChargecloudInvoiceNumber}");
+                    sb.AppendLine($"Betrag: {ChargecloudAmount}");
+                    sb.AppendLine($"Status: {ChargecloudStatus}");
+                    sb.AppendLine($"Datum: {ChargecloudDate}");
+                    sb.AppendLine($"Vertrag: {ChargecloudContract}");
+                    sb.AppendLine($"Zahlungsmethode: {ChargecloudPaymentMethod}");
+                    sb.AppendLine($"Bruttobetrag: {ChargecloudInvoiceAmountGross}");
+                    sb.AppendLine($"Bezahlt: {ChargecloudAmountPaid}");
+                    sb.AppendLine($"Offen: {ChargecloudOpenAmount}");
+                }
+                else
+                {
+                    sb.AppendLine("Keine Chargecloud-Transaktion gefunden");
+                }
+                sb.AppendLine();
+
+                // Vergleichsanalyse
+                if (HasDiscrepancy)
+                {
+                    sb.AppendLine("=== VERGLEICHSANALYSE ===");
+                    sb.AppendLine($"Problem: {DiscrepancyDescription}");
+                    sb.AppendLine($"Betragsunterschied: {AmountDifference}");
+                    sb.AppendLine($"Match-Score: {MatchingScore}");
+                    sb.AppendLine($"Timeline-Analyse: {TimelineAnalysis}");
+                    sb.AppendLine($"Betrag-Analyse: {AmountAnalysis}");
+                }
+
+                Clipboard.SetText(sb.ToString());
+                MessageBox.Show("Alle Transaktionsdaten wurden in die Zwischenablage kopiert.", "Kopiert", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Kopieren aller Daten: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CreateEmail()
+        {
+            try
+            {
+                var subject = $"Transaktionsproblem: {CustomerEmail} - {Amount}";
+                var body = new StringBuilder();
+
+                body.AppendLine($"Sehr geehrte Damen und Herren,");
+                body.AppendLine();
+                body.AppendLine($"bezüglich der Transaktion für {CustomerEmail} vom {TransactionDate} liegt folgendes Problem vor:");
+                body.AppendLine();
+                body.AppendLine($"Problem: {DiscrepancyDescription}");
+                body.AppendLine();
+
+                if (HasStripeTransaction)
+                {
+                    body.AppendLine("Stripe-Details:");
+                    body.AppendLine($"- ID: {StripeId}");
+                    body.AppendLine($"- Betrag: {StripeAmount}");
+                    body.AppendLine($"- Status: {StripeStatus}");
+                    body.AppendLine();
+                }
+
+                if (HasChargecloudTransaction)
+                {
+                    body.AppendLine("Chargecloud-Details:");
+                    body.AppendLine($"- Rechnungsnummer: {ChargecloudInvoiceNumber}");
+                    body.AppendLine($"- Betrag: {ChargecloudAmount}");
+                    body.AppendLine($"- Status: {ChargecloudStatus}");
+                    body.AppendLine();
+                }
+
+                body.AppendLine("Bitte prüfen Sie diesen Fall und geben Sie eine Rückmeldung.");
+                body.AppendLine();
+                body.AppendLine("Mit freundlichen Grüßen");
+
+                var mailtoUri = $"mailto:{CustomerEmail}?subject={Uri.EscapeDataString(subject)}&body={Uri.EscapeDataString(body.ToString())}";
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = mailtoUri,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Erstellen der E-Mail: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

@@ -71,6 +71,24 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="WarningButtonStyle" TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+            <Setter Property="Background" Value="#FF9800"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F57C00"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+            <Setter Property="Background" Value="#F44336"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#D32F2F"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- DataGrid Styles -->
         <Style x:Key="ModernDataGridStyle" TargetType="DataGrid">
             <Setter Property="AutoGenerateColumns" Value="False"/>
@@ -83,161 +101,510 @@
             <Setter Property="AlternatingRowBackground" Value="#F8F9FA"/>
             <Setter Property="RowHeight" Value="35"/>
             <Setter Property="FontSize" Value="12"/>
+            <Setter Property="CanUserSortColumns" Value="True"/>
         </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- Header/Toolbar -->
             <RowDefinition Height="Auto"/>
-            <!-- Filter -->
             <RowDefinition Height="*"/>
-            <!-- Main Content -->
             <RowDefinition Height="Auto"/>
-            <!-- Status Bar -->
         </Grid.RowDefinitions>
 
         <!-- Header/Toolbar -->
         <Border Grid.Row="0" Background="#FAFAFA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="10">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="🔄 Refresh" 
-                        Style="{StaticResource ModernButtonStyle}"
-                        Command="{Binding RefreshDataCommand}"
-                        ToolTip="Daten neu vergleichen"/>
+            <StackPanel>
+                <!-- Status Cards -->
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
 
-                <Button Content="📁 Stripe Datei" 
-                        Style="{StaticResource ModernButtonStyle}"
-                        Command="{Binding LoadStripeFileCommand}"
-                        ToolTip="Stripe CSV-Datei laden"/>
-
-                <Button Content="📁 Chargecloud Datei" 
-                        Style="{StaticResource ModernButtonStyle}"
-                        Command="{Binding LoadChargecloudFileCommand}"
-                        ToolTip="Chargecloud CSV-Datei laden"/>
-
-                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="10,0"/>
-
-                <Button Content="📊 Excel Export" 
-                        Style="{StaticResource SuccessButtonStyle}"
-                        Command="{Binding ExportToExcelCommand}"
-                        ToolTip="Ergebnisse nach Excel exportieren"/>
-
-                <TextBox x:Name="SearchTextBox" 
-                         Width="200" 
-                         Margin="20,0,0,0"
-                         Padding="8,6"
-                         Text="{Binding FilterOptions.SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         FontSize="12">
-                    <TextBox.Style>
-                        <Style TargetType="TextBox">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="TextBox">
-                                        <Border Background="White" 
-                                                BorderBrush="#DDD" 
-                                                BorderThickness="1" 
-                                                CornerRadius="4">
-                                            <Grid>
-                                                <ScrollViewer x:Name="PART_ContentHost" 
-                                                            Margin="8,0,25,0" 
-                                                            VerticalAlignment="Center"/>
-                                                <TextBlock Text="🔍 Suche..." 
-                                                         Foreground="#999" 
-                                                         Margin="8,0,25,0" 
-                                                         VerticalAlignment="Center"
-                                                         IsHitTestVisible="False">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource AncestorType=TextBox}}" Value="">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                            </Grid>
-                                        </Border>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </TextBox.Style>
-                </TextBox>
-
-                <!-- Loading Indicator -->
-                <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
-                    <ProgressBar Width="100" Height="4" IsIndeterminate="{Binding IsLoading}">
-                        <ProgressBar.Style>
-                            <Style TargetType="ProgressBar">
-                                <Setter Property="Visibility" Value="Collapsed"/>
+                    <!-- Stripe Status Card -->
+                    <Border Grid.Column="0" BorderBrush="#E3F2FD" BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="White"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsLoading}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
+                                    <DataTrigger Binding="{Binding HasStripeData}" Value="True">
+                                        <Setter Property="Background" Value="#E8F5E8"/>
+                                        <Setter Property="BorderBrush" Value="#4CAF50"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HasStripeData}" Value="False">
+                                        <Setter Property="Background" Value="#F8F9FA"/>
+                                        <Setter Property="BorderBrush" Value="#E0E0E0"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </ProgressBar.Style>
-                    </ProgressBar>
-                    <TextBlock Text="Lädt..." Margin="10,0,0,0" Foreground="#666">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed"/>
+                        </Border.Style>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="💳" FontSize="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Stripe-Daten" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasStripeData}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasStripeData}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <TextBlock Text="✅" FontSize="12" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Geladen" FontWeight="SemiBold" Foreground="#4CAF50"/>
+                                </StackPanel>
+
+                                <TextBlock FontSize="11" Foreground="#666">
+                                    <Run Text="{Binding StripeTransactionCount, Mode=OneWay}"/>
+                                    <Run Text="Transaktionen"/>
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasStripeData}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasStripeData}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <TextBlock Text="⏳" FontSize="12" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Noch nicht geladen" FontWeight="SemiBold" Foreground="#FF9800"/>
+                                </StackPanel>
+
+                                <TextBlock Text="CSV-Datei laden" FontSize="11" Foreground="#666"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Chargecloud Status Card -->
+                    <Border Grid.Column="1" BorderBrush="#FFF3E0" BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="White"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsLoading}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
+                                    <DataTrigger Binding="{Binding HasChargecloudData}" Value="True">
+                                        <Setter Property="Background" Value="#E8F5E8"/>
+                                        <Setter Property="BorderBrush" Value="#4CAF50"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HasChargecloudData}" Value="False">
+                                        <Setter Property="Background" Value="#F8F9FA"/>
+                                        <Setter Property="BorderBrush" Value="#E0E0E0"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                        </Border.Style>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="⚡" FontSize="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Chargecloud-Daten" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasChargecloudData}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasChargecloudData}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <TextBlock Text="✅" FontSize="12" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Geladen" FontWeight="SemiBold" Foreground="#4CAF50"/>
+                                </StackPanel>
+
+                                <TextBlock FontSize="11" Foreground="#666">
+                                    <Run Text="{Binding ChargecloudTransactionCount, Mode=OneWay}"/>
+                                    <Run Text="Transaktionen"/>
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasChargecloudData}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasChargecloudData}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <TextBlock Text="⏳" FontSize="12" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Noch nicht geladen" FontWeight="SemiBold" Foreground="#FF9800"/>
+                                </StackPanel>
+
+                                <TextBlock Text="CSV-Datei laden" FontSize="11" Foreground="#666"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Comparison Status Card -->
+                    <Border Grid.Column="2" BorderBrush="#E8F5E8" BorderThickness="2" CornerRadius="8" Margin="5" Padding="15">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="White"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasData}" Value="True">
+                                        <Setter Property="Background" Value="#E8F5E8"/>
+                                        <Setter Property="BorderBrush" Value="#4CAF50"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HasData}" Value="False">
+                                        <Setter Property="Background" Value="#F8F9FA"/>
+                                        <Setter Property="BorderBrush" Value="#E0E0E0"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="🔄" FontSize="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Vergleich" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasData}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasData}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <TextBlock Text="✅" FontSize="12" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Abgeschlossen" FontWeight="SemiBold" Foreground="#4CAF50"/>
+                                </StackPanel>
+
+                                <TextBlock FontSize="11" Foreground="#666">
+                                    <Run Text="{Binding TotalTransactions, Mode=OneWay}"/>
+                                    <Run Text="verglichen"/>
+                                </TextBlock>
+
+                                <TextBlock FontSize="10" Foreground="#666" Margin="0,2,0,0">
+                                    <Run Text="{Binding ProblemsCount, Mode=OneWay}"/>
+                                    <Run Text="Probleme gefunden"/>
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasData}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasData}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <TextBlock Text="⏳" FontSize="12" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Warten auf Daten" FontWeight="SemiBold" Foreground="#FF9800"/>
+                                </StackPanel>
+
+                                <TextBlock Text="Beide Dateien laden" FontSize="11" Foreground="#666"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Buttons Row -->
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="🔄 Refresh" 
+                            Style="{StaticResource ModernButtonStyle}"
+                            Command="{Binding RefreshDataCommand}"
+                            ToolTip="Daten neu vergleichen"/>
+
+                    <Button Content="📁 Stripe Datei" 
+                            Style="{StaticResource ModernButtonStyle}"
+                            Command="{Binding LoadStripeFileCommand}"
+                            ToolTip="Stripe CSV-Datei laden"/>
+
+                    <Button Content="📁 Chargecloud Datei" 
+                            Style="{StaticResource ModernButtonStyle}"
+                            Command="{Binding LoadChargecloudFileCommand}"
+                            ToolTip="Chargecloud CSV-Datei laden"/>
+
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="10,0"/>
+
+                    <Button Content="📊 Excel Export" 
+                            Style="{StaticResource SuccessButtonStyle}"
+                            Command="{Binding ExportToExcelCommand}"
+                            ToolTip="Ergebnisse nach Excel exportieren"/>
+
+                    <TextBox x:Name="SearchTextBox" 
+                             Width="200" 
+                             Margin="20,0,0,0"
+                             Padding="8,6"
+                             Text="{Binding FilterOptions.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="12">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="TextBox">
+                                            <Border Background="White" 
+                                                    BorderBrush="#DDD" 
+                                                    BorderThickness="1" 
+                                                    CornerRadius="4">
+                                                <Grid>
+                                                    <ScrollViewer x:Name="PART_ContentHost" 
+                                                                Margin="8,0,25,0" 
+                                                                VerticalAlignment="Center"/>
+                                                    <TextBlock Text="🔍 Suche..." 
+                                                             Foreground="#999" 
+                                                             Margin="8,0,25,0" 
+                                                             VerticalAlignment="Center"
+                                                             IsHitTestVisible="False">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource AncestorType=TextBox}}" Value="">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Grid>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <!-- Loading Indicator -->
+                    <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
+                        <ProgressBar Width="100" Height="4" IsIndeterminate="{Binding IsLoading}">
+                            <ProgressBar.Style>
+                                <Style TargetType="ProgressBar">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ProgressBar.Style>
+                        </ProgressBar>
+                        <TextBlock Text="Lädt..." Margin="10,0,0,0" Foreground="#666">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
         </Border>
 
-        <!-- Filter Panel -->
+        <!-- ERWEITERTE Filter Panel -->
         <Border Grid.Row="1" Background="#F5F5F5" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="10">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Filter:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <StackPanel>
+                <!-- Erste Filterzeile - MIT PLATZHALTERN -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,10">
+                    <TextBlock Text="Filter:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
-                <ComboBox Width="200" Margin="5,0"
-                          ItemsSource="{Binding AvailableCustomers}"
-                          SelectedItem="{Binding FilterOptions.SelectedCustomer}"
-                          ToolTip="Nach Kunde filtern"/>
+                    <!-- Kunden-Filter -->
+                    <Grid>
+                        <ComboBox Width="200" Margin="5,0"
+                                  ItemsSource="{Binding AvailableCustomers}"
+                                  SelectedItem="{Binding FilterOptions.SelectedCustomer}"
+                                  ToolTip="Nach Kunde filtern">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" MaxWidth="180" TextTrimming="CharacterEllipsis"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock Text="🧑‍💼 Alle Kunden" 
+                                   Foreground="#999" 
+                                   Margin="8,0,0,0" 
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterOptions.SelectedCustomer}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
 
-                <ComboBox Width="80" Margin="5,0"
-                          ItemsSource="{Binding AvailableMonths}"
-                          SelectedItem="{Binding FilterOptions.SelectedMonth}"
-                          ToolTip="Nach Monat filtern">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding StringFormat=D2}"/>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                    <!-- Monats-Filter -->
+                    <Grid>
+                        <ComboBox Width="80" Margin="5,0"
+                                  ItemsSource="{Binding AvailableMonths}"
+                                  SelectedItem="{Binding FilterOptions.SelectedMonth}"
+                                  ToolTip="Nach Monat filtern">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding StringFormat=D2}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock Text="📅 Monat" 
+                                   Foreground="#999" 
+                                   Margin="8,0,0,0" 
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterOptions.SelectedMonth}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
 
-                <ComboBox Width="80" Margin="5,0"
-                          ItemsSource="{Binding AvailableYears}"
-                          SelectedItem="{Binding FilterOptions.SelectedYear}"
-                          ToolTip="Nach Jahr filtern"/>
+                    <!-- Jahres-Filter -->
+                    <Grid>
+                        <ComboBox Width="80" Margin="5,0"
+                                  ItemsSource="{Binding AvailableYears}"
+                                  SelectedItem="{Binding FilterOptions.SelectedYear}"
+                                  ToolTip="Nach Jahr filtern"/>
+                        <TextBlock Text="📅 Jahr" 
+                                   Foreground="#999" 
+                                   Margin="8,0,0,0" 
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterOptions.SelectedYear}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
 
-                <Button Content="🗑 Filter löschen" 
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Command="{Binding ClearFiltersCommand}"
-                        Margin="20,0,0,0"
-                        ToolTip="Alle Filter zurücksetzen"/>
+                    <!-- Status-Filter -->
+                    <Grid>
+                        <ComboBox Width="150" Margin="15,0,5,0"
+                                  ItemsSource="{Binding AvailableStatusFilters}"
+                                  SelectedItem="{Binding FilterOptions.SelectedStatusFilter}"
+                                  ToolTip="Nach Status filtern">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Icon}" Margin="0,0,5,0"/>
+                                        <TextBlock Text="{Binding DisplayName}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock Text="📊 Status" 
+                                   Foreground="#999" 
+                                   Margin="23,0,0,0" 
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterOptions.SelectedStatusFilter}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
 
-                <TextBlock Text="{Binding FilterOptions.FilterSummary}" 
-                          FontStyle="Italic" 
-                          Foreground="#666" 
-                          VerticalAlignment="Center" 
-                          Margin="20,0,0,0"/>
+                    <Button Content="🗑 Filter löschen" 
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding ClearFiltersCommand}"
+                            Margin="20,0,0,0"
+                            ToolTip="Alle Filter zurücksetzen"/>
+                </StackPanel>
+
+                <!-- Zweite Zeile: Quick-Filter Buttons -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Schnellfilter:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                    <Button Content="✅ Nur Übereinstimmungen" 
+                            Style="{StaticResource SuccessButtonStyle}"
+                            Command="{Binding ShowOnlyMatchesCommand}"
+                            Padding="8,4"
+                            FontSize="11"
+                            ToolTip="Nur perfekte Übereinstimmungen anzeigen"/>
+
+                    <Button Content="⚠ Nur Probleme" 
+                            Style="{StaticResource WarningButtonStyle}"
+                            Command="{Binding ShowOnlyProblemsCommand}"
+                            Padding="8,4"
+                            FontSize="11"
+                            ToolTip="Nur problematische Transaktionen anzeigen"/>
+
+                    <Button Content="💰 Betragsabweichungen" 
+                            Style="{StaticResource DangerButtonStyle}"
+                            Command="{Binding ShowOnlyAmountMismatchCommand}"
+                            Padding="8,4"
+                            FontSize="11"
+                            ToolTip="Nur Transaktionen mit Betragsabweichungen anzeigen"/>
+                </StackPanel>
             </StackPanel>
         </Border>
 
-        <!-- Main Content -->
+        <!-- Main Content mit sortierbare DataGrid -->
         <Grid Grid.Row="2" Margin="10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
@@ -245,7 +612,7 @@
                 <ColumnDefinition Width="1*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Transaction List -->
+            <!-- Transaction List mit Sortierung -->
             <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -257,7 +624,7 @@
                     <Border Grid.Row="0" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="10">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Transaktionen" FontSize="14" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding StatisticsSummary}" 
+                            <TextBlock Text="{Binding DisplayStatusInfo, Mode=OneWay}" 
                                       FontSize="12" 
                                       Foreground="#666" 
                                       Margin="20,0,0,0" 
@@ -265,22 +632,29 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- DataGrid -->
+                    <!-- DataGrid mit Sortierung -->
                     <DataGrid Grid.Row="1" 
                               Style="{StaticResource ModernDataGridStyle}"
-                              ItemsSource="{Binding FilteredComparisons}"
+                              ItemsSource="{Binding FilteredComparisonsView}"
                               SelectedItem="{Binding SelectedTransaction}"
-                              MouseDoubleClick="DataGrid_MouseDoubleClick">
+                              MouseDoubleClick="DataGrid_MouseDoubleClick"
+                              Sorting="DataGrid_Sorting">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Kunde" 
                                               Binding="{Binding CustomerEmail}" 
-                                              Width="200"/>
+                                              Width="200"
+                                              SortMemberPath="CustomerEmail"
+                                              CanUserSort="True"/>
                             <DataGridTextColumn Header="Datum" 
                                               Binding="{Binding FormattedDate}" 
-                                              Width="100"/>
+                                              Width="100"
+                                              SortMemberPath="TransactionDate"
+                                              CanUserSort="True"/>
                             <DataGridTextColumn Header="Betrag" 
                                               Binding="{Binding FormattedAmount}" 
-                                              Width="100">
+                                              Width="100"
+                                              SortMemberPath="Amount"
+                                              CanUserSort="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -290,7 +664,9 @@
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="S" 
                                               Binding="{Binding StripeStatus}" 
-                                              Width="30">
+                                              Width="30"
+                                              SortMemberPath="HasStripeTransaction"
+                                              CanUserSort="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -308,7 +684,9 @@
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="CC" 
                                               Binding="{Binding ChargecloudStatus}" 
-                                              Width="30">
+                                              Width="30"
+                                              SortMemberPath="HasChargecloudTransaction"
+                                              CanUserSort="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -324,7 +702,10 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTemplateColumn Header="Status" Width="150">
+                            <DataGridTemplateColumn Header="Status" 
+                                                  Width="150"
+                                                  SortMemberPath="Status"
+                                                  CanUserSort="True">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border CornerRadius="3" Padding="5,2" Margin="2">
@@ -491,14 +872,35 @@
 
         <!-- Status Bar -->
         <Border Grid.Row="3" Background="#FAFAFA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="10,5">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding StatusMessage}" 
-                          VerticalAlignment="Center"/>
-                <Rectangle Width="1" Height="16" Fill="#E0E0E0" Margin="15,0"/>
-                <TextBlock Text="{Binding FilteredComparisons.Count, StringFormat='Angezeigt: {0}'}" 
-                          VerticalAlignment="Center" 
-                          Foreground="#666"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Links: Version -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="v1.0.0" FontWeight="SemiBold" Foreground="#2196F3" VerticalAlignment="Center"/>
+                    <Rectangle Width="1" Height="16" Fill="#E0E0E0" Margin="10,0"/>
+                </StackPanel>
+
+                <!-- Mitte: Status-Informationen -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"/>
+                    <Rectangle Width="1" Height="16" Fill="#E0E0E0" Margin="15,0"/>
+                    <TextBlock Text="{Binding DisplayStatusInfo}"
+                              VerticalAlignment="Center" 
+                              Foreground="#666"/>
+                    <Rectangle Width="1" Height="16" Fill="#E0E0E0" Margin="15,0"/>
+                </StackPanel>
+
+                <!-- Rechts: Copyright -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Rectangle Width="1" Height="16" Fill="#E0E0E0" Margin="0,0,10,0"/>
+                    <TextBlock Text="© 2025 SmartWerk" FontStyle="Italic" Foreground="#888" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </Window>

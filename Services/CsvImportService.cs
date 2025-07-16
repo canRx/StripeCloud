@@ -16,6 +16,12 @@ namespace StripeCloud.Services
         {
             try
             {
+                // Erst Format validieren
+                if (!await IsValidStripeFormatAsync(filePath))
+                {
+                    throw new InvalidDataException("Die Datei entspricht nicht dem erwarteten Stripe-Format.");
+                }
+
                 using var reader = new StreamReader(filePath);
                 using var csv = new CsvReader(reader, GetStripeConfiguration());
 
@@ -32,9 +38,14 @@ namespace StripeCloud.Services
 
                 return transactions.OrderByDescending(t => t.CreatedDate).ToList();
             }
+            catch (InvalidDataException)
+            {
+                // User-freundliche Fehlermeldung weiterleiten
+                throw;
+            }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"Fehler beim Importieren der Stripe-CSV-Datei: {ex.Message}", ex);
+                throw new InvalidOperationException("Unbekanntes CSV-Format - Die ausgewählte Datei kann nicht gelesen werden.", ex);
             }
         }
 
@@ -42,6 +53,12 @@ namespace StripeCloud.Services
         {
             try
             {
+                // Erst Format validieren
+                if (!await IsValidChargecloudFormatAsync(filePath))
+                {
+                    throw new InvalidDataException("Die Datei entspricht nicht dem erwarteten Chargecloud-Format.");
+                }
+
                 using var reader = new StreamReader(filePath);
                 using var csv = new CsvReader(reader, GetChargecloudConfiguration());
 
@@ -58,9 +75,69 @@ namespace StripeCloud.Services
 
                 return transactions.OrderByDescending(t => t.DocumentDate).ToList();
             }
+            catch (InvalidDataException)
+            {
+                // User-freundliche Fehlermeldung weiterleiten
+                throw;
+            }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"Fehler beim Importieren der Chargecloud-CSV-Datei: {ex.Message}", ex);
+                throw new InvalidOperationException("Unbekanntes CSV-Format - Die ausgewählte Datei kann nicht gelesen werden.", ex);
+            }
+        }
+
+        // Format-Validierung
+        private async Task<bool> IsValidStripeFormatAsync(string filePath)
+        {
+            try
+            {
+                using var reader = new StreamReader(filePath);
+                var firstLine = await reader.ReadLineAsync();
+
+                if (string.IsNullOrWhiteSpace(firstLine))
+                    return false;
+
+                // Prüfe auf wichtige Stripe-Header
+                var requiredHeaders = new[] {
+                    "Created date (UTC)",
+                    "Customer Email",
+                    "Amount",
+                    "Status"
+                };
+
+                return requiredHeaders.All(header =>
+                    firstLine.Contains(header, StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private async Task<bool> IsValidChargecloudFormatAsync(string filePath)
+        {
+            try
+            {
+                using var reader = new StreamReader(filePath);
+                var firstLine = await reader.ReadLineAsync();
+
+                if (string.IsNullOrWhiteSpace(firstLine))
+                    return false;
+
+                // Prüfe auf wichtige Chargecloud-Header
+                var requiredHeaders = new[] {
+                    "Rechnungsnummer",
+                    "Empfänger",
+                    "Zahlungsmethode",
+                    "Belegdatum"
+                };
+
+                return requiredHeaders.All(header =>
+                    firstLine.Contains(header, StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -150,18 +227,10 @@ namespace StripeCloud.Services
         {
             try
             {
-                using var reader = new StreamReader(filePath);
-                var firstLine = await reader.ReadLineAsync();
-
-                if (string.IsNullOrWhiteSpace(firstLine))
-                    return CsvFileType.Unknown;
-
-                // Stripe-Header erkennen
-                if (firstLine.Contains("Created date (UTC)") && firstLine.Contains("Customer Email"))
+                if (await IsValidStripeFormatAsync(filePath))
                     return CsvFileType.Stripe;
 
-                // Chargecloud-Header erkennen
-                if (firstLine.Contains("Rechnungsnummer") && firstLine.Contains("Empfänger"))
+                if (await IsValidChargecloudFormatAsync(filePath))
                     return CsvFileType.Chargecloud;
 
                 return CsvFileType.Unknown;
@@ -195,7 +264,7 @@ namespace StripeCloud.Services
             return preview;
         }
 
-        // Import-Statistiken
+        // Import-Statistiken mit besserem Error Handling
         public class ImportResult<T> where T : class
         {
             public List<T> Data { get; set; } = new();
@@ -205,7 +274,8 @@ namespace StripeCloud.Services
             public List<string> Errors { get; set; } = new();
             public TimeSpan ImportDuration { get; set; }
 
-            public bool IsSuccessful => Data.Count > 0 && Errors.Count == 0;
+            public bool IsSuccessful => Data.Count > 0 && !HasCriticalErrors;
+            public bool HasCriticalErrors => Errors.Any(e => e.Contains("Unbekanntes CSV-Format") || e.Contains("entspricht nicht dem erwarteten"));
             public double SuccessRate => TotalRows > 0 ? (double)SuccessfulRows / TotalRows * 100 : 0;
         }
 
@@ -216,6 +286,14 @@ namespace StripeCloud.Services
 
             try
             {
+                // Format-Validierung zuerst
+                if (!await IsValidStripeFormatAsync(filePath))
+                {
+                    result.Errors.Add("❌ Unbekanntes CSV-Format\n\nDie ausgewählte Datei kann nicht gelesen werden.\nBitte stellen Sie sicher, dass es sich um eine\ngültige Stripe-CSV-Datei handelt.");
+                    result.ImportDuration = DateTime.Now - startTime;
+                    return result;
+                }
+
                 using var reader = new StreamReader(filePath);
                 using var csv = new CsvReader(reader, GetStripeConfiguration());
 
@@ -244,9 +322,10 @@ namespace StripeCloud.Services
 
                 result.Data = result.Data.OrderByDescending(t => t.CreatedDate).ToList();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                result.Errors.Add($"Allgemeiner Importfehler: {ex.Message}");
+                // KORRIGIERT: Exception-Variable entfernt, da sie nicht verwendet wird
+                result.Errors.Add("❌ Unbekanntes CSV-Format\n\nDie ausgewählte Datei kann nicht gelesen werden.\nBitte stellen Sie sicher, dass es sich um eine\ngültige Stripe-CSV-Datei handelt.");
             }
 
             result.ImportDuration = DateTime.Now - startTime;
@@ -260,6 +339,14 @@ namespace StripeCloud.Services
 
             try
             {
+                // Format-Validierung zuerst
+                if (!await IsValidChargecloudFormatAsync(filePath))
+                {
+                    result.Errors.Add("❌ Unbekanntes CSV-Format\n\nDie ausgewählte Datei kann nicht gelesen werden.\nBitte stellen Sie sicher, dass es sich um eine\ngültige Chargecloud-CSV-Datei handelt.");
+                    result.ImportDuration = DateTime.Now - startTime;
+                    return result;
+                }
+
                 using var reader = new StreamReader(filePath);
                 using var csv = new CsvReader(reader, GetChargecloudConfiguration());
 
@@ -288,9 +375,10 @@ namespace StripeCloud.Services
 
                 result.Data = result.Data.OrderByDescending(t => t.DocumentDate).ToList();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                result.Errors.Add($"Allgemeiner Importfehler: {ex.Message}");
+                // KORRIGIERT: Exception-Variable entfernt, da sie nicht verwendet wird
+                result.Errors.Add("❌ Unbekanntes CSV-Format\n\nDie ausgewählte Datei kann nicht gelesen werden.\nBitte stellen Sie sicher, dass es sich um eine\ngültige Chargecloud-CSV-Datei handelt.");
             }
 
             result.ImportDuration = DateTime.Now - startTime;

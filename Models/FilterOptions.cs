@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 
 namespace StripeCloud.Models
 {
@@ -10,6 +12,7 @@ namespace StripeCloud.Models
         private int? _selectedMonth;
         private int? _selectedYear;
         private ComparisonStatus? _selectedStatus;
+        private StatusFilterOption? _selectedStatusFilter;
         private decimal? _minAmount;
         private decimal? _maxAmount;
         private DateTime? _startDate;
@@ -80,13 +83,27 @@ namespace StripeCloud.Models
             }
         }
 
-        // Status-Filter
+        // Status-Filter (alt)
         public ComparisonStatus? SelectedStatus
         {
             get => _selectedStatus;
             set
             {
                 _selectedStatus = value;
+                OnPropertyChanged(nameof(SelectedStatus));
+            }
+        }
+
+        //  Erweiterte Status-Filter
+        public StatusFilterOption? SelectedStatusFilter
+        {
+            get => _selectedStatusFilter;
+            set
+            {
+                _selectedStatusFilter = value;
+                // Automatisch den alten Status setzen für Kompatibilität
+                _selectedStatus = value?.Status;
+                OnPropertyChanged(nameof(SelectedStatusFilter));
                 OnPropertyChanged(nameof(SelectedStatus));
             }
         }
@@ -119,58 +136,11 @@ namespace StripeCloud.Models
             SelectedMonth.HasValue ||
             SelectedYear.HasValue ||
             SelectedStatus.HasValue ||
+            SelectedStatusFilter != null ||
             MinAmount.HasValue ||
             MaxAmount.HasValue ||
             StartDate.HasValue ||
             EndDate.HasValue;
-
-        public string FilterSummary
-        {
-            get
-            {
-                if (!HasAnyFilter) return "Keine Filter aktiv";
-
-                var filters = new List<string>();
-
-                if (!string.IsNullOrWhiteSpace(SearchText))
-                    filters.Add($"Suche: '{SearchText}'");
-
-                if (!string.IsNullOrWhiteSpace(SelectedCustomer))
-                    filters.Add($"Kunde: {SelectedCustomer}");
-
-                if (SelectedMonth.HasValue && SelectedYear.HasValue)
-                    filters.Add($"Datum: {SelectedMonth:D2}/{SelectedYear}");
-                else if (SelectedYear.HasValue)
-                    filters.Add($"Jahr: {SelectedYear}");
-                else if (SelectedMonth.HasValue)
-                    filters.Add($"Monat: {SelectedMonth:D2}");
-
-                if (StartDate.HasValue || EndDate.HasValue)
-                {
-                    if (StartDate.HasValue && EndDate.HasValue)
-                        filters.Add($"Zeitraum: {StartDate:dd.MM.yyyy} - {EndDate:dd.MM.yyyy}");
-                    else if (StartDate.HasValue)
-                        filters.Add($"Ab: {StartDate:dd.MM.yyyy}");
-                    else if (EndDate.HasValue)
-                        filters.Add($"Bis: {EndDate:dd.MM.yyyy}");
-                }
-
-                if (SelectedStatus.HasValue)
-                    filters.Add($"Status: {GetStatusDisplayName(SelectedStatus.Value)}");
-
-                if (MinAmount.HasValue || MaxAmount.HasValue)
-                {
-                    if (MinAmount.HasValue && MaxAmount.HasValue)
-                        filters.Add($"Betrag: {MinAmount:C} - {MaxAmount:C}");
-                    else if (MinAmount.HasValue)
-                        filters.Add($"Min. Betrag: {MinAmount:C}");
-                    else if (MaxAmount.HasValue)
-                        filters.Add($"Max. Betrag: {MaxAmount:C}");
-                }
-
-                return string.Join(", ", filters);
-            }
-        }
 
         // Helper Methods
         private void UpdateDateRange()
@@ -212,53 +182,182 @@ namespace StripeCloud.Models
             SelectedMonth = null;
             SelectedYear = null;
             SelectedStatus = null;
+            SelectedStatusFilter = null;
             MinAmount = null;
             MaxAmount = null;
             StartDate = null;
             EndDate = null;
         }
 
-        // Prüfen ob eine Transaktion den Filtern entspricht
+        // Schnellfilter-Methoden
+        public void SetOnlyMatches()
+        {
+            SelectedStatusFilter = StatusFilterOption.OnlyMatches;
+        }
+
+        public void SetOnlyProblems()
+        {
+            SelectedStatusFilter = StatusFilterOption.OnlyProblems;
+        }
+
+        public void SetOnlyAmountMismatch()
+        {
+            SelectedStatusFilter = StatusFilterOption.AmountMismatch;
+        }
+
+        public void ShowAll()
+        {
+            SelectedStatusFilter = null;
+            SelectedStatus = null;
+        }
+
+        // KORRIGIERT: Kumulative Filter-Logik statt frühem Return
         public bool MatchesFilter(TransactionComparison transaction)
         {
+            var filterResults = new List<bool>();
+
+            // Freitext-Suche (wenn angegeben)
+            if (!string.IsNullOrWhiteSpace(SearchText))
+            {
+                var searchLower = SearchText.ToLowerInvariant();
+                var textMatches = transaction.CustomerEmail.ToLowerInvariant().Contains(searchLower) ||
+                                transaction.DisplayName.ToLowerInvariant().Contains(searchLower) ||
+                                transaction.StatusText.ToLowerInvariant().Contains(searchLower);
+                filterResults.Add(textMatches);
+            }
+
+            // Kunden-Filter (wenn angegeben)
+            if (!string.IsNullOrWhiteSpace(SelectedCustomer))
+            {
+                var customerMatches = transaction.CustomerEmail.Equals(SelectedCustomer, StringComparison.OrdinalIgnoreCase);
+                filterResults.Add(customerMatches);
+            }
+
+            // Datum-Filter über StartDate/EndDate (wenn angegeben)
+            if (StartDate.HasValue)
+            {
+                var afterStartDate = transaction.TransactionDate.Date >= StartDate.Value.Date;
+                filterResults.Add(afterStartDate);
+            }
+
+            if (EndDate.HasValue)
+            {
+                var beforeEndDate = transaction.TransactionDate.Date <= EndDate.Value.Date;
+                filterResults.Add(beforeEndDate);
+            }
+
+            // Status-Filter (erweitert) - wenn angegeben
+            if (SelectedStatusFilter != null)
+            {
+                var statusMatches = SelectedStatusFilter.MatchesTransaction(transaction);
+                filterResults.Add(statusMatches);
+            }
+            else if (SelectedStatus.HasValue)
+            {
+                var statusMatches = transaction.Status == SelectedStatus.Value;
+                filterResults.Add(statusMatches);
+            }
+
+            // Betrag-Filter (wenn angegeben)
+            if (MinAmount.HasValue)
+            {
+                var aboveMinAmount = Math.Abs(transaction.Amount) >= MinAmount.Value;
+                filterResults.Add(aboveMinAmount);
+            }
+
+            if (MaxAmount.HasValue)
+            {
+                var belowMaxAmount = Math.Abs(transaction.Amount) <= MaxAmount.Value;
+                filterResults.Add(belowMaxAmount);
+            }
+
+            // NEUE LOGIK: Alle angewendeten Filter müssen erfüllt sein (UND-Verknüpfung)
+            // Wenn keine Filter angewendet wurden, zeige alle Transaktionen
+            if (filterResults.Count == 0)
+                return true;
+
+            // Alle Filterkriterien müssen true sein
+            return filterResults.All(result => result);
+        }
+
+        // NEUE METHODE: Debug-Informationen für Filter
+        public string GetActiveFiltersDebugInfo()
+        {
+            var activeFilters = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(SearchText))
+                activeFilters.Add($"Suche: '{SearchText}'");
+
+            if (!string.IsNullOrWhiteSpace(SelectedCustomer))
+                activeFilters.Add($"Kunde: {SelectedCustomer}");
+
+            if (SelectedMonth.HasValue)
+                activeFilters.Add($"Monat: {SelectedMonth:D2}");
+
+            if (SelectedYear.HasValue)
+                activeFilters.Add($"Jahr: {SelectedYear}");
+
+            if (SelectedStatusFilter != null)
+                activeFilters.Add($"Status: {SelectedStatusFilter.DisplayName}");
+
+            if (MinAmount.HasValue)
+                activeFilters.Add($"Min: {MinAmount:C}");
+
+            if (MaxAmount.HasValue)
+                activeFilters.Add($"Max: {MaxAmount:C}");
+
+            return activeFilters.Count > 0
+                ? string.Join(" | ", activeFilters)
+                : "Keine Filter aktiv";
+        }
+
+        // NEUE METHODE: Prüfung einzelner Filter
+        public FilterMatchResult GetDetailedFilterResult(TransactionComparison transaction)
+        {
+            var result = new FilterMatchResult();
+
             // Freitext-Suche
             if (!string.IsNullOrWhiteSpace(SearchText))
             {
                 var searchLower = SearchText.ToLowerInvariant();
-                if (!transaction.CustomerEmail.ToLowerInvariant().Contains(searchLower) &&
-                    !transaction.DisplayName.ToLowerInvariant().Contains(searchLower) &&
-                    !transaction.StatusText.ToLowerInvariant().Contains(searchLower))
-                {
-                    return false;
-                }
+                result.TextSearchMatch = transaction.CustomerEmail.ToLowerInvariant().Contains(searchLower) ||
+                                       transaction.DisplayName.ToLowerInvariant().Contains(searchLower) ||
+                                       transaction.StatusText.ToLowerInvariant().Contains(searchLower);
+                result.HasTextSearch = true;
             }
 
             // Kunden-Filter
-            if (!string.IsNullOrWhiteSpace(SelectedCustomer) &&
-                !transaction.CustomerEmail.Equals(SelectedCustomer, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(SelectedCustomer))
             {
-                return false;
+                result.CustomerMatch = transaction.CustomerEmail.Equals(SelectedCustomer, StringComparison.OrdinalIgnoreCase);
+                result.HasCustomerFilter = true;
             }
 
-            // Datum-Filter
-            if (StartDate.HasValue && transaction.TransactionDate.Date < StartDate.Value.Date)
-                return false;
+            // Monats-Filter
+            if (SelectedMonth.HasValue)
+            {
+                result.MonthMatch = transaction.TransactionDate.Month == SelectedMonth.Value;
+                result.HasMonthFilter = true;
+            }
 
-            if (EndDate.HasValue && transaction.TransactionDate.Date > EndDate.Value.Date)
-                return false;
+            // Jahres-Filter
+            if (SelectedYear.HasValue)
+            {
+                result.YearMatch = transaction.TransactionDate.Year == SelectedYear.Value;
+                result.HasYearFilter = true;
+            }
 
             // Status-Filter
-            if (SelectedStatus.HasValue && transaction.Status != SelectedStatus.Value)
-                return false;
+            if (SelectedStatusFilter != null)
+            {
+                result.StatusMatch = SelectedStatusFilter.MatchesTransaction(transaction);
+                result.HasStatusFilter = true;
+            }
 
-            // Betrag-Filter
-            if (MinAmount.HasValue && Math.Abs(transaction.Amount) < MinAmount.Value)
-                return false;
+            // Berechne Gesamtergebnis
+            result.OverallMatch = result.AllActiveFiltersMatch();
 
-            if (MaxAmount.HasValue && Math.Abs(transaction.Amount) > MaxAmount.Value)
-                return false;
-
-            return true;
+            return result;
         }
 
         // INotifyPropertyChanged Implementation
@@ -268,5 +367,132 @@ namespace StripeCloud.Models
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+    }
+
+    // NEUE KLASSE: Detaillierte Filter-Ergebnisse für Debugging
+    public class FilterMatchResult
+    {
+        public bool HasTextSearch { get; set; }
+        public bool TextSearchMatch { get; set; }
+
+        public bool HasCustomerFilter { get; set; }
+        public bool CustomerMatch { get; set; }
+
+        public bool HasMonthFilter { get; set; }
+        public bool MonthMatch { get; set; }
+
+        public bool HasYearFilter { get; set; }
+        public bool YearMatch { get; set; }
+
+        public bool HasStatusFilter { get; set; }
+        public bool StatusMatch { get; set; }
+
+        public bool OverallMatch { get; set; }
+
+        public bool AllActiveFiltersMatch()
+        {
+            var checks = new List<bool>();
+
+            if (HasTextSearch) checks.Add(TextSearchMatch);
+            if (HasCustomerFilter) checks.Add(CustomerMatch);
+            if (HasMonthFilter) checks.Add(MonthMatch);
+            if (HasYearFilter) checks.Add(YearMatch);
+            if (HasStatusFilter) checks.Add(StatusMatch);
+
+            return checks.Count == 0 || checks.All(x => x);
+        }
+
+        public string GetSummary()
+        {
+            var results = new List<string>();
+
+            if (HasTextSearch) results.Add($"Text: {(TextSearchMatch ? "✓" : "✗")}");
+            if (HasCustomerFilter) results.Add($"Kunde: {(CustomerMatch ? "✓" : "✗")}");
+            if (HasMonthFilter) results.Add($"Monat: {(MonthMatch ? "✓" : "✗")}");
+            if (HasYearFilter) results.Add($"Jahr: {(YearMatch ? "✓" : "✗")}");
+            if (HasStatusFilter) results.Add($"Status: {(StatusMatch ? "✓" : "✗")}");
+
+            return results.Count > 0
+                ? $"{string.Join(", ", results)} → {(OverallMatch ? "ANZEIGEN" : "VERSTECKT")}"
+                : "Keine Filter → ANZEIGEN";
+        }
+    }
+
+    // Erweiterte Status-Filter-Optionen (unverändert)
+    public class StatusFilterOption
+    {
+        public string DisplayName { get; set; } = string.Empty;
+        public string Icon { get; set; } = string.Empty;
+        public ComparisonStatus? Status { get; set; }
+        public Func<TransactionComparison, bool> FilterFunc { get; set; } = _ => true;
+
+        public bool MatchesTransaction(TransactionComparison transaction)
+        {
+            return FilterFunc(transaction);
+        }
+
+        // Vordefinierte Filter-Optionen
+        public static StatusFilterOption All => new()
+        {
+            DisplayName = "Alle",
+            Icon = "📋",
+            Status = null,
+            FilterFunc = _ => true
+        };
+
+        public static StatusFilterOption OnlyMatches => new()
+        {
+            DisplayName = "Nur Übereinstimmungen",
+            Icon = "✅",
+            Status = ComparisonStatus.Match,
+            FilterFunc = t => t.Status == ComparisonStatus.Match
+        };
+
+        public static StatusFilterOption OnlyProblems => new()
+        {
+            DisplayName = "Nur Probleme",
+            Icon = "⚠",
+            Status = null,
+            FilterFunc = t => t.Status != ComparisonStatus.Match
+        };
+
+        public static StatusFilterOption OnlyStripe => new()
+        {
+            DisplayName = "Nur in Stripe",
+            Icon = "💳",
+            Status = ComparisonStatus.OnlyStripe,
+            FilterFunc = t => t.Status == ComparisonStatus.OnlyStripe
+        };
+
+        public static StatusFilterOption OnlyChargecloud => new()
+        {
+            DisplayName = "Nur in Chargecloud",
+            Icon = "⚡",
+            Status = ComparisonStatus.OnlyChargecloud,
+            FilterFunc = t => t.Status == ComparisonStatus.OnlyChargecloud
+        };
+
+        public static StatusFilterOption AmountMismatch => new()
+        {
+            DisplayName = "Betragsabweichung",
+            Icon = "💰",
+            Status = ComparisonStatus.AmountMismatch,
+            FilterFunc = t => t.Status == ComparisonStatus.AmountMismatch
+        };
+
+        public static List<StatusFilterOption> GetAllOptions()
+        {
+            return new List<StatusFilterOption>
+            {
+                All,
+                OnlyMatches,
+                OnlyProblems,
+                OnlyStripe,
+                OnlyChargecloud,
+                AmountMismatch
+            };
+        }
+
+        public override string ToString() => DisplayName;
     }
 }
