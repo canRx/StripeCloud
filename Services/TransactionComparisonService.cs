@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using StripeCloud.Models;
 
@@ -55,10 +56,7 @@ namespace StripeCloud.Services
         }
 
         /// <summary>
-        /// Vergleicht Transaktionen für eine spezifische E-Mail-Adresse
-        /// </summary>
-        /// <summary>
-        /// Vergleicht Transaktionen für eine spezifische E-Mail-Adresse
+        /// AKTUALISIERT: Vergleicht Transaktionen für eine spezifische E-Mail-Adresse mit mehrstufigem Matching
         /// </summary>
         private List<TransactionComparison> CompareTransactionsForEmail(
             string email,
@@ -69,26 +67,49 @@ namespace StripeCloud.Services
             var matchedStripe = new HashSet<StripeTransaction>();
             var matchedChargecloud = new HashSet<ChargecloudTransaction>();
 
-            // 1. Versuche direkte Matches zu finden (Betrag + Datum)
+            // LAYER 1: E-Mail + Betrag Matching (höchste Priorität)
             foreach (var stripe in stripeTransactions)
             {
-                var matchingChargecloud = FindBestMatch(stripe, chargecloudTransactions, matchedChargecloud);
-
-                if (matchingChargecloud != null)
+                var exactMatch = FindExactEmailAndAmountMatch(stripe, chargecloudTransactions, matchedChargecloud);
+                if (exactMatch != null)
                 {
-                    comparisons.Add(TransactionComparison.CreateMatched(stripe, matchingChargecloud));
+                    comparisons.Add(TransactionComparison.CreateMatched(stripe, exactMatch, MatchConfidence.High));
                     matchedStripe.Add(stripe);
-                    matchedChargecloud.Add(matchingChargecloud);
+                    matchedChargecloud.Add(exactMatch);
                 }
             }
 
-            // 2. Nicht gematchte Stripe-Transaktionen hinzufügen
+            // LAYER 2: Name + Betrag Matching (mittlere Priorität)
+            foreach (var stripe in stripeTransactions.Where(s => !matchedStripe.Contains(s)))
+            {
+                var nameMatch = FindNameAndAmountMatch(stripe, chargecloudTransactions, matchedChargecloud);
+                if (nameMatch != null)
+                {
+                    comparisons.Add(TransactionComparison.CreateMatched(stripe, nameMatch, MatchConfidence.Medium));
+                    matchedStripe.Add(stripe);
+                    matchedChargecloud.Add(nameMatch);
+                }
+            }
+
+            // LAYER 3: Nur Betrag Matching (niedrigste Priorität)
+            foreach (var stripe in stripeTransactions.Where(s => !matchedStripe.Contains(s)))
+            {
+                var amountMatch = FindAmountOnlyMatch(stripe, chargecloudTransactions, matchedChargecloud);
+                if (amountMatch != null)
+                {
+                    comparisons.Add(TransactionComparison.CreateMatched(stripe, amountMatch, MatchConfidence.Low));
+                    matchedStripe.Add(stripe);
+                    matchedChargecloud.Add(amountMatch);
+                }
+            }
+
+            // Nicht gematchte Stripe-Transaktionen hinzufügen
             foreach (var stripe in stripeTransactions.Where(s => !matchedStripe.Contains(s)))
             {
                 comparisons.Add(TransactionComparison.CreateStripeOnly(stripe));
             }
 
-            // 3. Nicht gematchte Chargecloud-Transaktionen hinzufügen
+            // Nicht gematchte Chargecloud-Transaktionen hinzufügen
             foreach (var chargecloud in chargecloudTransactions.Where(c => !matchedChargecloud.Contains(c)))
             {
                 comparisons.Add(TransactionComparison.CreateChargecloudOnly(chargecloud));
@@ -98,66 +119,89 @@ namespace StripeCloud.Services
         }
 
         /// <summary>
-        /// Findet die beste Übereinstimmung für eine Stripe-Transaktion
+        /// LAYER 1: Findet exakte E-Mail + Betrag Matches
         /// </summary>
-        private ChargecloudTransaction? FindBestMatch(
+        private ChargecloudTransaction? FindExactEmailAndAmountMatch(
             StripeTransaction stripe,
             List<ChargecloudTransaction> candidates,
             HashSet<ChargecloudTransaction> alreadyMatched)
         {
             var availableCandidates = candidates.Where(c => !alreadyMatched.Contains(c)).ToList();
 
-            if (!availableCandidates.Any())
-                return null;
-
-            // 1. Exakte Betrag-Matches bevorzugen
-            var exactAmountMatches = availableCandidates
-                .Where(c => Math.Abs(stripe.NetAmount - c.NetAmount) <= _amountMatchTolerance)
-                .ToList();
-
-            if (exactAmountMatches.Any())
-            {
-                // Von den exakten Betrag-Matches das mit dem nächsten Datum nehmen
-                return exactAmountMatches
-                    .OrderBy(c => Math.Abs((c.DocumentDate - stripe.CreatedDate).TotalDays))
-                    .FirstOrDefault(c => Math.Abs((c.DocumentDate - stripe.CreatedDate).TotalDays) <= _dateMatchTolerance.TotalDays);
-            }
-
-            // 2. Wenn kein exakter Betrag-Match, dann beste Kombination aus Betrag und Datum
-            var scoredMatches = availableCandidates
-                .Select(c => new
-                {
-                    Transaction = c,
-                    AmountDiff = Math.Abs(stripe.NetAmount - c.NetAmount),
-                    DateDiff = Math.Abs((c.DocumentDate - stripe.CreatedDate).TotalDays),
-                    Score = CalculateMatchScore(stripe, c)
-                })
-                .Where(m => m.DateDiff <= _dateMatchTolerance.TotalDays && m.Score > 0.5) // Mindest-Score für Match
-                .OrderByDescending(m => m.Score)
-                .ToList();
-
-            return scoredMatches.FirstOrDefault()?.Transaction;
+            return availableCandidates
+                .Where(c =>
+                    string.Equals(stripe.CustomerEmail.Trim(), c.CustomerEmail.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                    Math.Abs(stripe.NetAmount - c.NetAmount) <= _amountMatchTolerance)
+                .OrderBy(c => Math.Abs((c.DocumentDate - stripe.CreatedDate).TotalDays))
+                .FirstOrDefault(c => Math.Abs((c.DocumentDate - stripe.CreatedDate).TotalDays) <= _dateMatchTolerance.TotalDays);
         }
 
         /// <summary>
-        /// Berechnet einen Match-Score zwischen 0 und 1
+        /// LAYER 2: Findet Name (aus E-Mail) + Betrag Matches
         /// </summary>
-        private double CalculateMatchScore(StripeTransaction stripe, ChargecloudTransaction chargecloud)
+        private ChargecloudTransaction? FindNameAndAmountMatch(
+            StripeTransaction stripe,
+            List<ChargecloudTransaction> candidates,
+            HashSet<ChargecloudTransaction> alreadyMatched)
         {
-            // Gewichtung: 60% Betrag, 40% Datum
-            const double amountWeight = 0.6;
-            const double dateWeight = 0.4;
+            var stripeName = ExtractNameFromEmail(stripe.CustomerEmail);
+            if (string.IsNullOrEmpty(stripeName)) return null;
 
-            // Betrag-Score (je näher desto besser)
-            var amountDiff = Math.Abs(stripe.NetAmount - chargecloud.NetAmount);
-            var maxAmount = Math.Max(Math.Abs(stripe.NetAmount), Math.Abs(chargecloud.NetAmount));
-            var amountScore = maxAmount > 0 ? Math.Max(0, 1 - (double)(amountDiff / maxAmount)) : 1;
+            var availableCandidates = candidates.Where(c => !alreadyMatched.Contains(c)).ToList();
 
-            // Datum-Score (je näher desto besser)
-            var dateDiff = Math.Abs((chargecloud.DocumentDate - stripe.CreatedDate).TotalDays);
-            var dateScore = Math.Max(0, 1 - (dateDiff / _dateMatchTolerance.TotalDays));
+            return availableCandidates
+                .Where(c =>
+                {
+                    var chargecloudName = ExtractNameFromEmail(c.CustomerEmail);
+                    return !string.IsNullOrEmpty(chargecloudName) &&
+                           string.Equals(stripeName, chargecloudName, StringComparison.OrdinalIgnoreCase) &&
+                           Math.Abs(stripe.NetAmount - c.NetAmount) <= _amountMatchTolerance;
+                })
+                .OrderBy(c => Math.Abs((c.DocumentDate - stripe.CreatedDate).TotalDays))
+                .FirstOrDefault(c => Math.Abs((c.DocumentDate - stripe.CreatedDate).TotalDays) <= _dateMatchTolerance.TotalDays);
+        }
 
-            return (amountScore * amountWeight) + (dateScore * dateWeight);
+        /// <summary>
+        /// LAYER 3: Findet nur Betrag Matches
+        /// </summary>
+        private ChargecloudTransaction? FindAmountOnlyMatch(
+            StripeTransaction stripe,
+            List<ChargecloudTransaction> candidates,
+            HashSet<ChargecloudTransaction> alreadyMatched)
+        {
+            var availableCandidates = candidates.Where(c => !alreadyMatched.Contains(c)).ToList();
+
+            return availableCandidates
+                .Where(c => Math.Abs(stripe.NetAmount - c.NetAmount) <= _amountMatchTolerance)
+                .OrderBy(c => Math.Abs((c.DocumentDate - stripe.CreatedDate).TotalDays))
+                .FirstOrDefault(c => Math.Abs((c.DocumentDate - stripe.CreatedDate).TotalDays) <= _dateMatchTolerance.TotalDays);
+        }
+
+        /// <summary>
+        /// Extrahiert den Namen aus einer E-Mail-Adresse
+        /// Beispiele: john.doe@example.com -> john.doe, j.smith@test.de -> j.smith
+        /// </summary>
+        private string ExtractNameFromEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return string.Empty;
+
+            try
+            {
+                var localPart = email.Split('@')[0];
+
+                // Entferne Zahlen und Sonderzeichen, behalte nur Buchstaben, Punkte und Bindestriche
+                var cleanName = Regex.Replace(localPart, @"[^a-zA-ZäöüÄÖÜß.\-]", "");
+
+                // Wenn zu kurz oder nur Punkte/Bindestriche, return empty
+                if (cleanName.Length < 2 || cleanName.Trim('.', '-').Length < 2)
+                    return string.Empty;
+
+                return cleanName.ToLowerInvariant();
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         /// <summary>
@@ -201,6 +245,7 @@ namespace StripeCloud.Services
                 TransactionDate = c.TransactionDate,
                 Amount = c.Amount,
                 Status = c.StatusText,
+                MatchConfidence = c.MatchConfidenceText, // NEU
                 HasStripe = c.HasStripeTransaction,
                 HasChargecloud = c.HasChargecloudTransaction,
                 AmountDifference = c.AmountDifference,
@@ -217,6 +262,15 @@ namespace StripeCloud.Services
         private string GenerateNotes(TransactionComparison comparison)
         {
             var notes = new List<string>();
+
+            if (comparison.MatchConfidence.HasValue)
+                notes.Add($"Match-Level: {comparison.MatchConfidence.Value.GetDisplayName()}");
+
+            if (comparison.IsManuallyConfirmed)
+                notes.Add("Manuell bestätigt");
+
+            if (comparison.IsManuallyRejected)
+                notes.Add("Manuell abgelehnt");
 
             if (comparison.HasAmountDiscrepancy)
                 notes.Add($"Betragsabweichung: {comparison.AmountDifference:C}");
@@ -249,6 +303,13 @@ namespace StripeCloud.Services
         public int OnlyStripeCount { get; private set; }
         public int OnlyChargecloudCount { get; private set; }
         public int AmountMismatchCount { get; private set; }
+
+        // NEUE Statistiken für Match-Confidence
+        public int HighConfidenceMatches { get; private set; }
+        public int MediumConfidenceMatches { get; private set; }
+        public int LowConfidenceMatches { get; private set; }
+        public int PendingConfirmations { get; private set; }
+
         public decimal TotalStripeAmount { get; private set; }
         public decimal TotalChargecloudAmount { get; private set; }
         public decimal TotalDiscrepancy { get; private set; }
@@ -262,6 +323,12 @@ namespace StripeCloud.Services
             OnlyStripeCount = Comparisons.Count(c => c.Status == ComparisonStatus.OnlyStripe);
             OnlyChargecloudCount = Comparisons.Count(c => c.Status == ComparisonStatus.OnlyChargecloud);
             AmountMismatchCount = Comparisons.Count(c => c.Status == ComparisonStatus.AmountMismatch);
+
+            // NEUE Statistiken
+            HighConfidenceMatches = Comparisons.Count(c => c.MatchConfidence == MatchConfidence.High);
+            MediumConfidenceMatches = Comparisons.Count(c => c.MatchConfidence == MatchConfidence.Medium);
+            LowConfidenceMatches = Comparisons.Count(c => c.MatchConfidence == MatchConfidence.Low);
+            PendingConfirmations = Comparisons.Count(c => c.RequiresConfirmation);
 
             TotalStripeAmount = Comparisons
                 .Where(c => c.HasStripeTransaction)
@@ -278,14 +345,15 @@ namespace StripeCloud.Services
         {
             return $"Gesamt: {TotalComparisons}, " +
                    $"Übereinstimmungen: {PerfectMatches} ({MatchRate:F1}%), " +
+                   $"Sicher: {HighConfidenceMatches}, " +
+                   $"Zu prüfen: {PendingConfirmations}, " +
                    $"Nur Stripe: {OnlyStripeCount}, " +
-                   $"Nur Chargecloud: {OnlyChargecloudCount}, " +
-                   $"Betragsabweichungen: {AmountMismatchCount}";
+                   $"Nur Chargecloud: {OnlyChargecloudCount}";
         }
     }
 
     /// <summary>
-    /// Zeile für Excel-Export
+    /// AKTUALISIERTE Zeile für Excel-Export
     /// </summary>
     public class ExportRow
     {
@@ -293,6 +361,7 @@ namespace StripeCloud.Services
         public DateTime TransactionDate { get; set; }
         public decimal Amount { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string MatchConfidence { get; set; } = string.Empty; // NEU
         public bool HasStripe { get; set; }
         public bool HasChargecloud { get; set; }
         public decimal AmountDifference { get; set; }

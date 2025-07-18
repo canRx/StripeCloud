@@ -1,9 +1,11 @@
-﻿using System.ComponentModel;
+﻿using StripeCloud.Models;
+using StripeCloud.ViewModels;
+using System;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
-using StripeCloud.Models;
-using StripeCloud.ViewModels;
 
 namespace StripeCloud
 {
@@ -66,9 +68,23 @@ namespace StripeCloud
             viewModel.HandleDataGridSorting(sortMemberPath, direction);
         }
 
-        private void Button_Click()
+        // Event-Handler für Checkbox-Auswahl
+        private void TransactionCheckBox_Checked(object sender, RoutedEventArgs e)
         {
+            if (sender is CheckBox checkBox && checkBox.DataContext is TransactionComparison transaction)
+            {
+                var viewModel = DataContext as MainViewModel;
+                viewModel?.ToggleTransactionSelectionCommand.Execute(transaction);
+            }
+        }
 
+        private void TransactionCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (sender is CheckBox checkBox && checkBox.DataContext is TransactionComparison transaction)
+            {
+                var viewModel = DataContext as MainViewModel;
+                viewModel?.ToggleTransactionSelectionCommand.Execute(transaction);
+            }
         }
     }
 }

@@ -94,7 +94,7 @@ namespace StripeCloud.Models
             }
         }
 
-        //  Erweiterte Status-Filter
+        // Erweiterte Status-Filter
         public StatusFilterOption? SelectedStatusFilter
         {
             get => _selectedStatusFilter;
@@ -145,18 +145,21 @@ namespace StripeCloud.Models
         // Helper Methods
         private void UpdateDateRange()
         {
+            // Nur wenn BEIDE Werte gesetzt sind, setze StartDate/EndDate
             if (SelectedYear.HasValue && SelectedMonth.HasValue)
             {
                 StartDate = new DateTime(SelectedYear.Value, SelectedMonth.Value, 1);
                 EndDate = StartDate.Value.AddMonths(1).AddDays(-1);
             }
-            else if (SelectedYear.HasValue)
+            else if (SelectedYear.HasValue && !SelectedMonth.HasValue)
             {
+                // Nur Jahr gesetzt - ganzes Jahr
                 StartDate = new DateTime(SelectedYear.Value, 1, 1);
                 EndDate = new DateTime(SelectedYear.Value, 12, 31);
             }
             else
             {
+                // Nur Monat oder gar nichts - keine Datumsbereich-Filterung
                 StartDate = null;
                 EndDate = null;
             }
@@ -205,13 +208,18 @@ namespace StripeCloud.Models
             SelectedStatusFilter = StatusFilterOption.AmountMismatch;
         }
 
+        public void SetManuallyConfirmed()
+        {
+            SelectedStatusFilter = StatusFilterOption.ManuallyConfirmed;
+        }
+
         public void ShowAll()
         {
             SelectedStatusFilter = null;
             SelectedStatus = null;
         }
 
-        // KORRIGIERT: Kumulative Filter-Logik statt frühem Return
+        // GEÄNDERT: Neue Filter-Logik - Monat/Jahr unabhängig
         public bool MatchesFilter(TransactionComparison transaction)
         {
             var filterResults = new List<bool>();
@@ -233,14 +241,28 @@ namespace StripeCloud.Models
                 filterResults.Add(customerMatches);
             }
 
-            // Datum-Filter über StartDate/EndDate (wenn angegeben)
-            if (StartDate.HasValue)
+            // GEÄNDERT: Monat-Filter unabhängig vom Jahr
+            if (SelectedMonth.HasValue)
+            {
+                var monthMatches = transaction.TransactionDate.Month == SelectedMonth.Value;
+                filterResults.Add(monthMatches);
+            }
+
+            // GEÄNDERT: Jahr-Filter unabhängig vom Monat
+            if (SelectedYear.HasValue)
+            {
+                var yearMatches = transaction.TransactionDate.Year == SelectedYear.Value;
+                filterResults.Add(yearMatches);
+            }
+
+            // Datum-Filter über StartDate/EndDate (nur wenn NICHT über Monat/Jahr gesetzt)
+            if (StartDate.HasValue && !SelectedMonth.HasValue && !SelectedYear.HasValue)
             {
                 var afterStartDate = transaction.TransactionDate.Date >= StartDate.Value.Date;
                 filterResults.Add(afterStartDate);
             }
 
-            if (EndDate.HasValue)
+            if (EndDate.HasValue && !SelectedMonth.HasValue && !SelectedYear.HasValue)
             {
                 var beforeEndDate = transaction.TransactionDate.Date <= EndDate.Value.Date;
                 filterResults.Add(beforeEndDate);
@@ -271,16 +293,14 @@ namespace StripeCloud.Models
                 filterResults.Add(belowMaxAmount);
             }
 
-            // NEUE LOGIK: Alle angewendeten Filter müssen erfüllt sein (UND-Verknüpfung)
-            // Wenn keine Filter angewendet wurden, zeige alle Transaktionen
+            // Alle angewendeten Filter müssen erfüllt sein (UND-Verknüpfung)
             if (filterResults.Count == 0)
                 return true;
 
-            // Alle Filterkriterien müssen true sein
             return filterResults.All(result => result);
         }
 
-        // NEUE METHODE: Debug-Informationen für Filter
+        // Debug-Informationen für Filter
         public string GetActiveFiltersDebugInfo()
         {
             var activeFilters = new List<string>();
@@ -311,7 +331,7 @@ namespace StripeCloud.Models
                 : "Keine Filter aktiv";
         }
 
-        // NEUE METHODE: Prüfung einzelner Filter
+        // Prüfung einzelner Filter
         public FilterMatchResult GetDetailedFilterResult(TransactionComparison transaction)
         {
             var result = new FilterMatchResult();
@@ -369,7 +389,7 @@ namespace StripeCloud.Models
         }
     }
 
-    // NEUE KLASSE: Detaillierte Filter-Ergebnisse für Debugging
+    // Detaillierte Filter-Ergebnisse für Debugging
     public class FilterMatchResult
     {
         public bool HasTextSearch { get; set; }
@@ -418,7 +438,7 @@ namespace StripeCloud.Models
         }
     }
 
-    // Erweiterte Status-Filter-Optionen (unverändert)
+    // Erweiterte Status-Filter-Optionen
     public class StatusFilterOption
     {
         public string DisplayName { get; set; } = string.Empty;
@@ -480,6 +500,15 @@ namespace StripeCloud.Models
             FilterFunc = t => t.Status == ComparisonStatus.AmountMismatch
         };
 
+        // NEU: Filter für manuell bestätigte Transaktionen
+        public static StatusFilterOption ManuallyConfirmed => new()
+        {
+            DisplayName = "Manuell bestätigt",
+            Icon = "👍",
+            Status = null,
+            FilterFunc = t => t.MatchConfidence == MatchConfidence.Manual || t.IsManuallyConfirmed
+        };
+
         public static List<StatusFilterOption> GetAllOptions()
         {
             return new List<StatusFilterOption>
@@ -489,7 +518,8 @@ namespace StripeCloud.Models
                 OnlyProblems,
                 OnlyStripe,
                 OnlyChargecloud,
-                AmountMismatch
+                AmountMismatch,
+                ManuallyConfirmed // NEU
             };
         }
 

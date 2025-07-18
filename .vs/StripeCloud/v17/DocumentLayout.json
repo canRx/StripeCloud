@@ -3,12 +3,48 @@
   "WorkspaceRootPath": "C:\\Users\\caner\\source\\repos\\StripeCloud\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\.gitignore.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:.gitignore.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\models\\filteroptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:models\\filteroptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\services\\manualmatchingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:services\\manualmatchingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\models\\transactioncomparison.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:models\\transactioncomparison.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\views\\transactiondetailwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:views\\transactiondetailwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\viewmodels\\transactiondetailviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:viewmodels\\transactiondetailviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\services\\transactioncomparisonservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:services\\transactioncomparisonservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\models\\matchconfidence.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:models\\matchconfidence.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|c:\\users\\caner\\source\\repos\\stripecloud\\.gitignore.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{3C3543A3-6813-43A3-99EC-0539BA73FFA7}|StripeCloud.csproj|solutionrelative:.gitignore.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
     }
   ],
   "DocumentGroupContainers": [
@@ -23,6 +59,119 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "MainViewModel.cs",
+              "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\ViewModels\\MainViewModel.cs",
+              "RelativeDocumentMoniker": "ViewModels\\MainViewModel.cs",
+              "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\ViewModels\\MainViewModel.cs",
+              "RelativeToolTip": "ViewModels\\MainViewModel.cs",
+              "ViewState": "AgIAAGcDAAAAAAAAAAAiwHwDAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-18T09:48:51.424Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "TransactionDetailWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Views\\TransactionDetailWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\TransactionDetailWindow.xaml",
+              "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Views\\TransactionDetailWindow.xaml",
+              "RelativeToolTip": "Views\\TransactionDetailWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-07-17T11:28:08.362Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "MainWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\MainWindow.xaml.cs",
+              "RelativeDocumentMoniker": "MainWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\MainWindow.xaml.cs",
+              "RelativeToolTip": "MainWindow.xaml.cs",
+              "ViewState": "AgIAACsAAAAAAAAAAAAUwFkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-17T11:02:53.547Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "MainWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\MainWindow.xaml",
+              "RelativeDocumentMoniker": "MainWindow.xaml",
+              "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\MainWindow.xaml",
+              "RelativeToolTip": "MainWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-07-16T22:45:06.253Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "TransactionComparison.cs",
+              "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Models\\TransactionComparison.cs",
+              "RelativeDocumentMoniker": "Models\\TransactionComparison.cs",
+              "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Models\\TransactionComparison.cs",
+              "RelativeToolTip": "Models\\TransactionComparison.cs",
+              "ViewState": "AgIAAOwAAAAAAAAAAAAiwAQBAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-17T11:27:04.97Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "TransactionDetailViewModel.cs",
+              "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\ViewModels\\TransactionDetailViewModel.cs",
+              "RelativeDocumentMoniker": "ViewModels\\TransactionDetailViewModel.cs",
+              "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\ViewModels\\TransactionDetailViewModel.cs",
+              "RelativeToolTip": "ViewModels\\TransactionDetailViewModel.cs",
+              "ViewState": "AgIAAKEBAAAAAAAAAAAwwM0BAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-17T11:27:50.376Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "FilterOptions.cs",
+              "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Models\\FilterOptions.cs",
+              "RelativeDocumentMoniker": "Models\\FilterOptions.cs",
+              "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Models\\FilterOptions.cs",
+              "RelativeToolTip": "Models\\FilterOptions.cs",
+              "ViewState": "AgIAAOEBAAAAAAAAAAAUwA8CAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-17T11:00:31.007Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ManualMatchingService.cs",
+              "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Services\\ManualMatchingService.cs",
+              "RelativeDocumentMoniker": "Services\\ManualMatchingService.cs",
+              "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Services\\ManualMatchingService.cs",
+              "RelativeToolTip": "Services\\ManualMatchingService.cs",
+              "ViewState": "AgIAAAABAAAAAAAAAAAUwC4BAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-18T09:59:37.807Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "MatchConfidence.cs",
+              "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Models\\MatchConfidence.cs",
+              "RelativeDocumentMoniker": "Models\\MatchConfidence.cs",
+              "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Models\\MatchConfidence.cs",
+              "RelativeToolTip": "Models\\MatchConfidence.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAEwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-17T11:26:31.892Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
               "Title": ".gitignore.txt",
               "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\.gitignore.txt",
               "RelativeDocumentMoniker": ".gitignore.txt",
@@ -30,21 +179,19 @@
               "RelativeToolTip": ".gitignore.txt",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAACwAAAAHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
-              "WhenOpened": "2025-07-16T22:40:15.935Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-16T22:40:15.935Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 8,
               "Title": "TransactionComparisonService.cs",
               "DocumentMoniker": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Services\\TransactionComparisonService.cs",
               "RelativeDocumentMoniker": "Services\\TransactionComparisonService.cs",
               "ToolTip": "C:\\Users\\caner\\source\\repos\\StripeCloud\\Services\\TransactionComparisonService.cs",
               "RelativeToolTip": "Services\\TransactionComparisonService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAEsBAAAAAAAAAADwv3cBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-16T22:40:14.564Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-16T22:40:14.564Z"
             }
           ]
         }

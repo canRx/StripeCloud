@@ -33,6 +33,13 @@ namespace StripeCloud.ViewModels
         public string Status => Comparison.StatusText;
         public string StatusColor => Comparison.StatusColor;
 
+        // NEUE Properties für Match-Confidence
+        public bool HasMatchConfidence => Comparison.MatchConfidence.HasValue;
+        public string MatchConfidenceText => Comparison.MatchConfidenceText;
+        public bool ShowConfirmationButtons => Comparison.ShowConfirmationButtons;
+        public bool RequiresConfirmation => Comparison.RequiresConfirmation;
+        public string ConfidenceExplanation => GetConfidenceExplanation();
+
         // Stripe-spezifische Properties
         public bool HasStripeTransaction => Comparison.HasStripeTransaction;
         public StripeTransaction? StripeTransaction => Comparison.StripeTransaction;
@@ -101,6 +108,10 @@ namespace StripeCloud.ViewModels
         public ICommand CopyAllDataCommand { get; private set; } = null!;
         public ICommand CreateEmailCommand { get; private set; } = null!;
 
+        // NEUE Commands für Match-Confirmation
+        public ICommand ConfirmMatchCommand { get; private set; } = null!;
+        public ICommand RejectMatchCommand { get; private set; } = null!;
+
         private void InitializeCommands()
         {
             // Basis-Commands
@@ -117,6 +128,10 @@ namespace StripeCloud.ViewModels
             // Erweiterte Commands
             CopyAllDataCommand = new RelayCommand(CopyAllData);
             CreateEmailCommand = new RelayCommand(CreateEmail);
+
+            // NEUE Match-Confirmation Commands
+            ConfirmMatchCommand = new RelayCommand(ConfirmMatch, () => ShowConfirmationButtons);
+            RejectMatchCommand = new RelayCommand(RejectMatch, () => ShowConfirmationButtons);
         }
 
         #endregion
@@ -141,9 +156,82 @@ namespace StripeCloud.ViewModels
                 ComparisonStatus.OnlyStripe => "Diese Transaktion existiert nur in Stripe, aber nicht in Chargecloud.",
                 ComparisonStatus.OnlyChargecloud => "Diese Transaktion existiert nur in Chargecloud, aber nicht in Stripe.",
                 ComparisonStatus.AmountMismatch => $"Die Beträge zwischen Stripe und Chargecloud weichen um {AmountDifference} ab.",
+                ComparisonStatus.ManuallyRejected => "Diese Transaktionen wurden manuell als nicht zugehörig markiert.",
                 ComparisonStatus.Match => "Beide Transaktionen stimmen überein.",
                 _ => "Unbekannte Diskrepanz."
             };
+        }
+
+        // NEUE Methode für Confidence-Erklärung
+        private string GetConfidenceExplanation()
+        {
+            if (!Comparison.MatchConfidence.HasValue) return "";
+
+            return Comparison.MatchConfidence.Value switch
+            {
+                MatchConfidence.High => "Diese Transaktionen wurden anhand von E-Mail-Adresse und Betrag gematcht. Die Übereinstimmung ist sehr wahrscheinlich korrekt (99%).",
+                MatchConfidence.Medium => "Diese Transaktionen wurden anhand des Namens (aus der E-Mail abgeleitet) und dem Betrag gematcht. Bitte prüfen Sie, ob die Zuordnung korrekt ist.",
+                MatchConfidence.Low => "Diese Transaktionen wurden nur anhand des Betrags gematcht. Bitte prüfen Sie sorgfältig, ob die Zuordnung korrekt ist.",
+                MatchConfidence.Manual => "Diese Transaktionen wurden manuell als zusammengehörig bestätigt.",
+                _ => ""
+            };
+        }
+
+        // NEUE Methoden für Match-Confirmation
+        private void ConfirmMatch()
+        {
+            try
+            {
+                _comparison.ConfirmMatch();
+
+                // UI Properties aktualisieren
+                OnPropertyChanged(nameof(ShowConfirmationButtons));
+                OnPropertyChanged(nameof(RequiresConfirmation));
+                OnPropertyChanged(nameof(Status));
+                OnPropertyChanged(nameof(StatusColor));
+                OnPropertyChanged(nameof(ConfidenceExplanation));
+
+                MessageBox.Show("Die Transaktionszuordnung wurde bestätigt.", "Bestätigt",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Bestätigen: {ex.Message}", "Fehler",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void RejectMatch()
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    "Möchten Sie die Transaktionszuordnung wirklich aufheben?\n\n" +
+                    "Die Transaktionen werden dann als separate Einträge angezeigt.",
+                    "Zuordnung aufheben",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    _comparison.RejectMatch();
+
+                    // UI Properties aktualisieren
+                    OnPropertyChanged(nameof(ShowConfirmationButtons));
+                    OnPropertyChanged(nameof(Status));
+                    OnPropertyChanged(nameof(StatusColor));
+                    OnPropertyChanged(nameof(HasDiscrepancy));
+                    OnPropertyChanged(nameof(DiscrepancyDescription));
+
+                    MessageBox.Show("Die Transaktionszuordnung wurde aufgehoben.", "Aufgehoben",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Aufheben: {ex.Message}", "Fehler",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void CopyToClipboard(string text)
@@ -172,6 +260,14 @@ namespace StripeCloud.ViewModels
                 sb.AppendLine($"Kunde: {CustomerEmail}");
                 sb.AppendLine($"Datum: {TransactionDate}");
                 sb.AppendLine($"Status: {Status}");
+
+                // Match-Confidence Info
+                if (HasMatchConfidence)
+                {
+                    sb.AppendLine($"Match-Level: {MatchConfidenceText}");
+                    sb.AppendLine($"Erklärung: {ConfidenceExplanation}");
+                }
+
                 sb.AppendLine();
 
                 // Stripe-Daten
@@ -245,6 +341,12 @@ namespace StripeCloud.ViewModels
                 body.AppendLine($"bezüglich der Transaktion für {CustomerEmail} vom {TransactionDate} liegt folgendes Problem vor:");
                 body.AppendLine();
                 body.AppendLine($"Problem: {DiscrepancyDescription}");
+
+                if (HasMatchConfidence)
+                {
+                    body.AppendLine($"Match-Level: {MatchConfidenceText}");
+                }
+
                 body.AppendLine();
 
                 if (HasStripeTransaction)

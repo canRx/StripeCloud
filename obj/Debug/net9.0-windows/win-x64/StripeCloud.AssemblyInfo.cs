@@ -16,7 +16,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCopyrightAttribute("© 2025 canR")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Transaktionsvergleich zwischen Stripe und Chargecloud")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.4.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.4+3ed882c5cbc5b12678c078819dbc68d7837e6875")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.4+9cc0dac21b69f61a00e5c615824cc05078f433c2")]
 [assembly: System.Reflection.AssemblyProductAttribute("StripeCloud")]
 [assembly: System.Reflection.AssemblyTitleAttribute("StripeCloud")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.4.0")]

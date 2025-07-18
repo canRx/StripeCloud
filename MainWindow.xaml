@@ -62,6 +62,22 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Edit Mode Button Style -->
+        <Style x:Key="EditModeButtonStyle" TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+            <Setter Property="Background" Value="#FF9800"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F57C00"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#EF6C00"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding IsEditMode}" Value="True">
+                    <Setter Property="Background" Value="#4CAF50"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
             <Setter Property="Background" Value="#4CAF50"/>
             <Style.Triggers>
@@ -109,6 +125,8 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <!-- Edit Mode Panel -->
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -365,6 +383,29 @@
 
                     <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="10,0"/>
 
+                    <!-- Edit Mode Button -->
+                    <Button Style="{StaticResource EditModeButtonStyle}"
+                            Command="{Binding ToggleEditModeCommand}"
+                            ToolTip="Bearbeitungsmodus aktivieren/deaktivieren">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="✏️" Margin="0,0,5,0"/>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Bearbeiten"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditMode}" Value="True">
+                                                    <Setter Property="Text" Value="Fertig"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
                     <Button Content="📊 Excel Export" 
                             Style="{StaticResource SuccessButtonStyle}"
                             Command="{Binding ExportToExcelCommand}"
@@ -445,16 +486,16 @@
             </StackPanel>
         </Border>
 
-        <!-- ERWEITERTE Filter Panel -->
+        <!-- Filter Panel -->
         <Border Grid.Row="1" Background="#F5F5F5" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="10">
             <StackPanel>
-                <!-- Erste Filterzeile - MIT PLATZHALTERN -->
+                <!-- Erste Filterzeile -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,10">
                     <TextBlock Text="Filter:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                     <!-- Kunden-Filter -->
                     <Grid>
-                        <ComboBox Width="200" Margin="5,0"
+                        <ComboBox Width="250" Margin="5,0"
                                   ItemsSource="{Binding AvailableCustomers}"
                                   SelectedItem="{Binding FilterOptions.SelectedCustomer}"
                                   ToolTip="Nach Kunde filtern">
@@ -538,10 +579,10 @@
 
                     <!-- Status-Filter -->
                     <Grid>
-                        <ComboBox Width="150" Margin="15,0,5,0"
+                        <ComboBox Margin="5,0,5,0"
                                   ItemsSource="{Binding AvailableStatusFilters}"
                                   SelectedItem="{Binding FilterOptions.SelectedStatusFilter}"
-                                  ToolTip="Nach Status filtern">
+                                  ToolTip="Nach Status filtern" Width="185">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal">
@@ -553,7 +594,7 @@
                         </ComboBox>
                         <TextBlock Text="📊 Status" 
                                    Foreground="#999" 
-                                   Margin="23,0,0,0" 
+                                   Margin="12,0,-16,0" 
                                    VerticalAlignment="Center"
                                    IsHitTestVisible="False">
                             <TextBlock.Style>
@@ -572,8 +613,8 @@
                     <Button Content="🗑 Filter löschen" 
                             Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding ClearFiltersCommand}"
-                            Margin="20,0,0,0"
-                            ToolTip="Alle Filter zurücksetzen"/>
+                            ToolTip="Alle Filter zurücksetzen" 
+                            Width="139"/>
                 </StackPanel>
 
                 <!-- Zweite Zeile: Quick-Filter Buttons -->
@@ -600,19 +641,88 @@
                             Padding="8,4"
                             FontSize="11"
                             ToolTip="Nur Transaktionen mit Betragsabweichungen anzeigen"/>
+
+                    <Button Content="👍 Manuell bestätigt" 
+                            Style="{StaticResource SuccessButtonStyle}"
+                            Command="{Binding ShowManuallyConfirmedCommand}"
+                            Padding="8,4"
+                            FontSize="11"
+                            ToolTip="Nur manuell bestätigte Transaktionen anzeigen"/>
                 </StackPanel>
             </StackPanel>
         </Border>
 
-        <!-- Main Content mit sortierbare DataGrid -->
-        <Grid Grid.Row="2" Margin="10">
+        <!-- Edit Mode Panel -->
+        <Border Grid.Row="2" Background="#FFF3E0" BorderBrush="#FF9800" BorderThickness="2" CornerRadius="4" Padding="12,8" Margin="5">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsEditMode}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsEditMode}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Links: Status -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="✏️" FontSize="18" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding EditModeStatusText}" FontWeight="SemiBold" FontSize="14"/>
+                </StackPanel>
+
+                <!-- Mitte: Anweisungen -->
+                <TextBlock Grid.Column="1" 
+                           Text="Wählen Sie Transaktionen per Checkbox aus und verwenden Sie die Buttons zum Matchen oder Aufheben"
+                           FontSize="12" 
+                           Foreground="#666" 
+                           VerticalAlignment="Center" 
+                           Margin="20,0"/>
+
+                <!-- Rechts: Action Buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="🔗 Matchen" 
+                            Style="{StaticResource SuccessButtonStyle}"
+                            Command="{Binding ManualMatchCommand}"
+                            Padding="10,6"
+                            FontSize="12"
+                            ToolTip="Ausgewählte Transaktionen manuell verknüpfen"/>
+
+                    <Button Content="🔓 Aufheben" 
+                            Style="{StaticResource DangerButtonStyle}"
+                            Command="{Binding UnmatchCommand}"
+                            Padding="10,6"
+                            FontSize="12"
+                            ToolTip="Ausgewählte Matches aufheben"/>
+
+                    <Button Content="🗑 Auswahl löschen" 
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding ClearSelectionCommand}"
+                            Padding="10,6"
+                            FontSize="12"
+                            ToolTip="Alle Auswahlmarkierungen entfernen"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="3" Margin="10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="5"/>
                 <ColumnDefinition Width="1*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Transaction List mit Sortierung -->
+            <!-- Transaction List -->
             <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -632,7 +742,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- DataGrid mit Sortierung -->
+                    <!-- DataGrid mit Checkbox-Spalte -->
                     <DataGrid Grid.Row="1" 
                               Style="{StaticResource ModernDataGridStyle}"
                               ItemsSource="{Binding FilteredComparisonsView}"
@@ -640,6 +750,35 @@
                               MouseDoubleClick="DataGrid_MouseDoubleClick"
                               Sorting="DataGrid_Sorting">
                         <DataGrid.Columns>
+                            <!-- Checkbox-Spalte für Edit Mode -->
+                            <DataGridTemplateColumn Width="40" CanUserSort="False">
+                                <DataGridTemplateColumn.Header>
+                                    <CheckBox IsEnabled="False" ToolTip="Bearbeitungsmodus aktivieren um Transaktionen auszuwählen"/>
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox HorizontalAlignment="Center" 
+                                                  VerticalAlignment="Center"
+                                                  IsChecked="{Binding Path=IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  Checked="TransactionCheckBox_Checked"
+                                                  Unchecked="TransactionCheckBox_Unchecked">
+                                            <CheckBox.Style>
+                                                <Style TargetType="CheckBox">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Path=DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Path=DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                                            <Setter Property="Visibility" Value="Hidden"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </CheckBox.Style>
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
                             <DataGridTextColumn Header="Kunde" 
                                               Binding="{Binding CustomerEmail}" 
                                               Width="200"
@@ -702,6 +841,7 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
+                            <!-- Status-Spalte mit Match-Confidence Farben -->
                             <DataGridTemplateColumn Header="Status" 
                                                   Width="150"
                                                   SortMemberPath="Status"
@@ -712,9 +852,48 @@
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Style.Triggers>
+                                                        <!-- Layer 1 Match: Satt-Grün -->
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding Status}" Value="Match"/>
+                                                                <Condition Binding="{Binding MatchConfidence}" Value="High"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Background" Value="#E8F5E8"/>
+                                                        </MultiDataTrigger>
+
+                                                        <!-- Layer 2 Match: Gelb-Grün -->
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding Status}" Value="Match"/>
+                                                                <Condition Binding="{Binding MatchConfidence}" Value="Medium"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Background" Value="#F1F8E9"/>
+                                                        </MultiDataTrigger>
+
+                                                        <!-- Layer 3 Match: Helles Orange -->
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding Status}" Value="Match"/>
+                                                                <Condition Binding="{Binding MatchConfidence}" Value="Low"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Background" Value="#FFF8E1"/>
+                                                        </MultiDataTrigger>
+
+                                                        <!-- Manuelle Bestätigung: Dunkel-Grün -->
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding Status}" Value="Match"/>
+                                                                <Condition Binding="{Binding MatchConfidence}" Value="Manual"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Background" Value="#C8E6C9"/>
+                                                        </MultiDataTrigger>
+
+                                                        <!-- Standard Match (fallback) -->
                                                         <DataTrigger Binding="{Binding Status}" Value="Match">
                                                             <Setter Property="Background" Value="#E8F5E8"/>
                                                         </DataTrigger>
+
+                                                        <!-- Bestehende Probleme -->
                                                         <DataTrigger Binding="{Binding Status}" Value="OnlyStripe">
                                                             <Setter Property="Background" Value="#FFF3E0"/>
                                                         </DataTrigger>
@@ -723,6 +902,9 @@
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Status}" Value="AmountMismatch">
                                                             <Setter Property="Background" Value="#FFEBEE"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="ManuallyRejected">
+                                                            <Setter Property="Background" Value="#F5F5F5"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -733,9 +915,45 @@
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Style.Triggers>
+                                                            <!-- Match-Confidence Farben -->
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding Status}" Value="Match"/>
+                                                                    <Condition Binding="{Binding MatchConfidence}" Value="High"/>
+                                                                </MultiDataTrigger.Conditions>
+                                                                <Setter Property="Foreground" Value="#2E7D32"/>
+                                                            </MultiDataTrigger>
+
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding Status}" Value="Match"/>
+                                                                    <Condition Binding="{Binding MatchConfidence}" Value="Medium"/>
+                                                                </MultiDataTrigger.Conditions>
+                                                                <Setter Property="Foreground" Value="#558B2F"/>
+                                                            </MultiDataTrigger>
+
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding Status}" Value="Match"/>
+                                                                    <Condition Binding="{Binding MatchConfidence}" Value="Low"/>
+                                                                </MultiDataTrigger.Conditions>
+                                                                <Setter Property="Foreground" Value="#F57C00"/>
+                                                            </MultiDataTrigger>
+
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding Status}" Value="Match"/>
+                                                                    <Condition Binding="{Binding MatchConfidence}" Value="Manual"/>
+                                                                </MultiDataTrigger.Conditions>
+                                                                <Setter Property="Foreground" Value="#1B5E20"/>
+                                                            </MultiDataTrigger>
+
+                                                            <!-- Standard Match -->
                                                             <DataTrigger Binding="{Binding Status}" Value="Match">
                                                                 <Setter Property="Foreground" Value="#2E7D32"/>
                                                             </DataTrigger>
+
+                                                            <!-- Bestehende Probleme -->
                                                             <DataTrigger Binding="{Binding Status}" Value="OnlyStripe">
                                                                 <Setter Property="Foreground" Value="#F57C00"/>
                                                             </DataTrigger>
@@ -744,6 +962,9 @@
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Status}" Value="AmountMismatch">
                                                                 <Setter Property="Foreground" Value="#C62828"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="ManuallyRejected">
+                                                                <Setter Property="Foreground" Value="#757575"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -871,7 +1092,7 @@
         </Grid>
 
         <!-- Status Bar -->
-        <Border Grid.Row="3" Background="#FAFAFA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="10,5">
+        <Border Grid.Row="4" Background="#FAFAFA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="10,5">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -881,7 +1102,9 @@
 
                 <!-- Links: Version -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <TextBlock Text="v1.0.0" FontWeight="SemiBold" Foreground="#2196F3" VerticalAlignment="Center"/>
+                    <TextBlock FontWeight="SemiBold" Foreground="#2196F3" VerticalAlignment="Center">
+                        <Run Text="v1.0.6"/>
+                    </TextBlock>
                     <Rectangle Width="1" Height="16" Fill="#E0E0E0" Margin="10,0"/>
                 </StackPanel>
 

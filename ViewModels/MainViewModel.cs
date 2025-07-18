@@ -19,6 +19,7 @@ namespace StripeCloud.ViewModels
         private readonly CsvImportService _csvImportService;
         private readonly TransactionComparisonService _comparisonService;
         private readonly ExcelExportService _excelExportService;
+        private readonly ManualMatchingService _manualMatchingService;
 
         // Private fields
         private bool _isLoading;
@@ -26,6 +27,10 @@ namespace StripeCloud.ViewModels
         private TransactionComparison? _selectedTransaction;
         private FilterOptions _filterOptions;
         private ComparisonResult? _lastComparisonResult;
+
+        // Bearbeitungsmodus
+        private bool _isEditMode;
+        private ObservableCollection<TransactionComparison> _selectedTransactions = new();
 
         // Collections
         private List<StripeTransaction> _stripeTransactions = new();
@@ -37,7 +42,7 @@ namespace StripeCloud.ViewModels
         private ObservableCollection<int> _availableMonths = new();
         private ObservableCollection<StatusFilterOption> _availableStatusFilters = new();
 
-        //  Sortierung
+        // Sortierung
         private ICollectionView? _filteredComparisonsView;
         private string _currentSortColumn = string.Empty;
         private ListSortDirection _currentSortDirection = ListSortDirection.Ascending;
@@ -47,6 +52,7 @@ namespace StripeCloud.ViewModels
             _csvImportService = new CsvImportService();
             _comparisonService = new TransactionComparisonService();
             _excelExportService = new ExcelExportService();
+            _manualMatchingService = new ManualMatchingService();
             _filterOptions = new FilterOptions();
 
             InitializeCommands();
@@ -89,6 +95,77 @@ namespace StripeCloud.ViewModels
             set => SetProperty(ref _filteredComparisons, value);
         }
 
+        // Bearbeitungsmodus Properties
+        public bool IsEditMode
+        {
+            get => _isEditMode;
+            set
+            {
+                if (SetProperty(ref _isEditMode, value))
+                {
+                    if (!value)
+                    {
+                        // Beim Verlassen des Bearbeitungsmodus: Auswahl zurücksetzen
+                        foreach (var transaction in SelectedTransactions.ToList())
+                        {
+                            transaction.IsSelected = false;
+                        }
+                        SelectedTransactions.Clear();
+                    }
+                    OnPropertyChanged(nameof(EditModeStatusText));
+                    OnPropertyChanged(nameof(SelectedTransactionCount));
+                    OnPropertyChanged(nameof(CanManualMatch));
+                    OnPropertyChanged(nameof(CanUnmatch));
+                }
+            }
+        }
+
+        public ObservableCollection<TransactionComparison> SelectedTransactions
+        {
+            get => _selectedTransactions;
+            set => SetProperty(ref _selectedTransactions, value);
+        }
+
+        public string EditModeStatusText
+        {
+            get
+            {
+                if (!IsEditMode)
+                    return "Bearbeitungsmodus inaktiv";
+
+                return $"Bearbeitungsmodus aktiv - {SelectedTransactionCount} Transaktionen ausgewählt";
+            }
+        }
+
+        public int SelectedTransactionCount => SelectedTransactions.Count;
+
+        public bool CanManualMatch
+        {
+            get
+            {
+                if (!IsEditMode || SelectedTransactionCount < 2)
+                    return false;
+
+                // Mindestens eine Stripe und eine Chargecloud Transaktion
+                var hasStripe = SelectedTransactions.Any(t => t.HasStripeTransaction);
+                var hasChargecloud = SelectedTransactions.Any(t => t.HasChargecloudTransaction);
+
+                return hasStripe && hasChargecloud;
+            }
+        }
+
+        public bool CanUnmatch
+        {
+            get
+            {
+                if (!IsEditMode || SelectedTransactionCount == 0)
+                    return false;
+
+                // Alle ausgewählten Transaktionen müssen gematchte Transaktionen sein
+                return SelectedTransactions.All(t => t.Status == ComparisonStatus.Match && t.HasBothTransactions);
+            }
+        }
+
         // CollectionView für Sortierung
         public ICollectionView? FilteredComparisonsView
         {
@@ -114,19 +191,17 @@ namespace StripeCloud.ViewModels
             set => SetProperty(ref _availableMonths, value);
         }
 
-        //  Status-Filter Optionen
         public ObservableCollection<StatusFilterOption> AvailableStatusFilters
         {
             get => _availableStatusFilters;
             set => SetProperty(ref _availableStatusFilters, value);
         }
 
-        // Statistik-Properties (vereinfacht)
+        // Statistik-Properties
         public int TotalTransactions => _allComparisons.Count;
         public int PerfectMatches => _allComparisons.Count(c => c.Status == ComparisonStatus.Match);
         public int ProblemsCount => _allComparisons.Count(c => c.Status != ComparisonStatus.Match);
 
-        // Vereinfachte Status-Anzeige nur mit Anzahl
         public string DisplayStatusInfo =>
             $"Angezeigt: {FilteredComparisons.Count} von {_allComparisons.Count}";
 
@@ -162,15 +237,21 @@ namespace StripeCloud.ViewModels
         public ICommand ExportToExcelCommand { get; private set; } = null!;
         public ICommand ShowTransactionDetailsCommand { get; private set; } = null!;
         public ICommand OpenDetailWindowCommand { get; private set; } = null!;
-
-        //  Support Command
         public ICommand OpenSupportEmailCommand { get; private set; } = null!;
 
-        //  Filter-Commands
+        // Filter-Commands
         public ICommand ShowOnlyMatchesCommand { get; private set; } = null!;
         public ICommand ShowOnlyProblemsCommand { get; private set; } = null!;
         public ICommand ShowOnlyAmountMismatchCommand { get; private set; } = null!;
         public ICommand ShowAllTransactionsCommand { get; private set; } = null!;
+        public ICommand ShowManuallyConfirmedCommand { get; private set; } = null!;
+
+        // Bearbeitungsmodus Commands
+        public ICommand ToggleEditModeCommand { get; private set; } = null!;
+        public ICommand ToggleTransactionSelectionCommand { get; private set; } = null!;
+        public ICommand ManualMatchCommand { get; private set; } = null!;
+        public ICommand UnmatchCommand { get; private set; } = null!;
+        public ICommand ClearSelectionCommand { get; private set; } = null!;
 
         private void InitializeCommands()
         {
@@ -181,15 +262,30 @@ namespace StripeCloud.ViewModels
             ExportToExcelCommand = new RelayCommand(async () => await ExportToExcelAsync(), () => HasData && !IsLoading);
             ShowTransactionDetailsCommand = new RelayCommand<TransactionComparison>(ShowTransactionDetails);
             OpenDetailWindowCommand = new RelayCommand(OpenDetailWindow, () => SelectedTransaction != null);
-
-            //  Support E-Mail Command
             OpenSupportEmailCommand = new RelayCommand(OpenSupportEmail);
 
-            //  Schnellfilter-Commands
+            // Schnellfilter-Commands
             ShowOnlyMatchesCommand = new RelayCommand(ShowOnlyMatches, () => HasData);
             ShowOnlyProblemsCommand = new RelayCommand(ShowOnlyProblems, () => HasData);
             ShowOnlyAmountMismatchCommand = new RelayCommand(ShowOnlyAmountMismatch, () => HasData);
             ShowAllTransactionsCommand = new RelayCommand(ShowAllTransactions, () => HasData);
+            ShowManuallyConfirmedCommand = new RelayCommand(ShowManuallyConfirmed, () => HasData);
+
+            // Bearbeitungsmodus Commands
+            ToggleEditModeCommand = new RelayCommand(ToggleEditMode, () => HasData);
+            ToggleTransactionSelectionCommand = new RelayCommand<TransactionComparison>(ToggleTransactionSelection);
+            ManualMatchCommand = new RelayCommand(ManualMatch, () => CanManualMatch);
+            UnmatchCommand = new RelayCommand(Unmatch, () => CanUnmatch);
+            ClearSelectionCommand = new RelayCommand(ClearSelection, () => SelectedTransactionCount > 0);
+
+            // Event-Handler für SelectedTransactions-Collection
+            SelectedTransactions.CollectionChanged += (s, e) =>
+            {
+                OnPropertyChanged(nameof(SelectedTransactionCount));
+                OnPropertyChanged(nameof(EditModeStatusText));
+                OnPropertyChanged(nameof(CanManualMatch));
+                OnPropertyChanged(nameof(CanUnmatch));
+            };
         }
 
         #endregion
@@ -224,7 +320,199 @@ namespace StripeCloud.ViewModels
             FilteredComparisonsView.SortDescriptions.Clear();
         }
 
-        //  Support E-Mail öffnen
+        // Helper-Methode für Checkbox-Binding
+        public bool IsTransactionSelected(TransactionComparison transaction)
+        {
+            return SelectedTransactions.Contains(transaction);
+        }
+
+        // Bearbeitungsmodus Methods
+        private void ToggleEditMode()
+        {
+            IsEditMode = !IsEditMode;
+
+            if (IsEditMode)
+            {
+                StatusMessage = "Bearbeitungsmodus aktiviert - Wählen Sie Transaktionen zum Matchen aus";
+            }
+            else
+            {
+                StatusMessage = "Bearbeitungsmodus deaktiviert";
+            }
+        }
+
+        private void ToggleTransactionSelection(TransactionComparison? transaction)
+        {
+            if (!IsEditMode || transaction == null)
+                return;
+
+            if (SelectedTransactions.Contains(transaction))
+            {
+                SelectedTransactions.Remove(transaction);
+                transaction.IsSelected = false;
+            }
+            else
+            {
+                SelectedTransactions.Add(transaction);
+                transaction.IsSelected = true;
+            }
+        }
+
+        private void ManualMatch()
+        {
+            if (!CanManualMatch)
+                return;
+
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "Führe manuelles Matching durch...";
+
+                // Zeige Confirmation-Dialog mit Details
+                var confirmationResult = ShowMatchingConfirmationDialog();
+                if (confirmationResult != MessageBoxResult.Yes)
+                {
+                    StatusMessage = "Manuelles Matching abgebrochen";
+                    return;
+                }
+
+                // Führe das manuelle Matching durch
+                var result = _manualMatchingService.MatchTransactions(_allComparisons, SelectedTransactions.ToList());
+
+                if (result.IsSuccessful)
+                {
+                    // Aktualisiere die Daten
+                    _allComparisons = result.UpdatedComparisons;
+                    UpdateAvailableFilterOptions();
+                    ApplyFilters();
+
+                    // Bearbeitungsmodus verlassen
+                    IsEditMode = false;
+
+                    StatusMessage = $"Manuelles Matching erfolgreich: {result.MatchedCount} Transaktionen verknüpft";
+
+                    MessageBox.Show($"Manuelles Matching erfolgreich abgeschlossen!\n\n" +
+                                  $"• {result.MatchedCount} Transaktionen wurden verknüpft\n" +
+                                  $"• Die neuen Matches sind als 'Manuell bestätigt' markiert",
+                                  "Matching erfolgreich", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    StatusMessage = $"Fehler beim manuellen Matching: {result.ErrorMessage}";
+                    MessageBox.Show($"Fehler beim manuellen Matching:\n\n{result.ErrorMessage}",
+                                  "Matching-Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Fehler beim manuellen Matching: {ex.Message}";
+                MessageBox.Show($"Unerwarteter Fehler beim manuellen Matching:\n\n{ex.Message}",
+                              "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+                UpdateCommandStates();
+                NotifyStatisticsChanged();
+            }
+        }
+
+        private void Unmatch()
+        {
+            if (!CanUnmatch)
+                return;
+
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "Hebe Matching auf...";
+
+                // Confirmation-Dialog
+                var result = MessageBox.Show(
+                    $"Möchten Sie das Matching von {SelectedTransactionCount} Transaktionen wirklich aufheben?\n\n" +
+                    "Die Transaktionen werden wieder als separate Einträge angezeigt.",
+                    "Matching aufheben",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    StatusMessage = "Aufheben des Matchings abgebrochen";
+                    return;
+                }
+
+                // Führe das Unmatch durch
+                var unmatchResult = _manualMatchingService.UnmatchTransactions(_allComparisons, SelectedTransactions.ToList());
+
+                if (unmatchResult.IsSuccessful)
+                {
+                    // Aktualisiere die Daten
+                    _allComparisons = unmatchResult.UpdatedComparisons;
+                    UpdateAvailableFilterOptions();
+                    ApplyFilters();
+
+                    // Bearbeitungsmodus verlassen
+                    IsEditMode = false;
+
+                    StatusMessage = $"Matching aufgehoben: {unmatchResult.UnmatchedCount} Transaktionen getrennt";
+
+                    MessageBox.Show($"Matching erfolgreich aufgehoben!\n\n" +
+                                  $"• {unmatchResult.UnmatchedCount} Transaktionen wurden getrennt\n" +
+                                  $"• Die Transaktionen sind nun wieder einzeln verfügbar",
+                                  "Matching aufgehoben", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    StatusMessage = $"Fehler beim Aufheben: {unmatchResult.ErrorMessage}";
+                    MessageBox.Show($"Fehler beim Aufheben des Matchings:\n\n{unmatchResult.ErrorMessage}",
+                                  "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Fehler beim Aufheben: {ex.Message}";
+                MessageBox.Show($"Unerwarteter Fehler beim Aufheben des Matchings:\n\n{ex.Message}",
+                              "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+                UpdateCommandStates();
+                NotifyStatisticsChanged();
+            }
+        }
+
+        private void ClearSelection()
+        {
+            foreach (var transaction in SelectedTransactions.ToList())
+            {
+                transaction.IsSelected = false;
+            }
+            SelectedTransactions.Clear();
+            StatusMessage = "Auswahl zurückgesetzt";
+        }
+
+        private MessageBoxResult ShowMatchingConfirmationDialog()
+        {
+            var stripeCount = SelectedTransactions.Count(t => t.HasStripeTransaction);
+            var chargecloudCount = SelectedTransactions.Count(t => t.HasChargecloudTransaction);
+
+            var message = $"Manuelles Matching durchführen?\n\n" +
+                         $"Ausgewählte Transaktionen:\n" +
+                         $"• {stripeCount} Stripe-Transaktionen\n" +
+                         $"• {chargecloudCount} Chargecloud-Transaktionen\n\n" +
+                         $"Es werden {Math.Min(stripeCount, chargecloudCount)} Matches erstellt.\n";
+
+            if (stripeCount != chargecloudCount)
+            {
+                message += $"\n⚠️ Warnung: Ungleiche Anzahl - {Math.Abs(stripeCount - chargecloudCount)} Transaktionen bleiben unverknüpft.";
+            }
+
+            return MessageBox.Show(message, "Manuelles Matching bestätigen",
+                                 MessageBoxButton.YesNo, MessageBoxImage.Question);
+        }
+
+        // Support E-Mail öffnen
         private void OpenSupportEmail()
         {
             try
@@ -396,6 +684,9 @@ namespace StripeCloud.ViewModels
                 IsLoading = true;
                 StatusMessage = "Vergleiche Transaktionen...";
 
+                // Bearbeitungsmodus deaktivieren beim Refresh
+                IsEditMode = false;
+
                 _lastComparisonResult = await _comparisonService.CompareTransactionsAsync(_stripeTransactions, _chargecloudTransactions);
 
                 if (_lastComparisonResult.IsSuccessful)
@@ -472,7 +763,6 @@ namespace StripeCloud.ViewModels
             // CollectionView refresh
             FilteredComparisonsView?.Refresh();
 
-            // GEÄNDERT: Einfachere Status-Updates
             OnPropertyChanged(nameof(DisplayStatusInfo));
         }
 
@@ -495,6 +785,11 @@ namespace StripeCloud.ViewModels
         private void ShowOnlyAmountMismatch()
         {
             FilterOptions.SetOnlyAmountMismatch();
+        }
+
+        private void ShowManuallyConfirmed()
+        {
+            FilterOptions.SetManuallyConfirmed();
         }
 
         private void ShowAllTransactions()
